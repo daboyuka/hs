@@ -1,0 +1,74 @@
+package command
+
+import (
+	"context"
+	"io"
+
+	"hs/record"
+	"hs/scope"
+)
+
+// Block is a sequence of commands with a closed scope.Scope (no bindings are exported).
+type Block []Command
+
+type blockStream struct {
+	prev     *blockStream
+	ctx      context.Context
+	cmd      Command
+	out      record.Stream
+	outBinds *scope.Bindings
+}
+
+func (cbs *blockStream) Next() (record.Record, error) {
+	for {
+		// Pop next value from current stream (if any); fallthrough if stream is exhausted
+		if cbs.out != nil {
+			if out, err := cbs.out.Next(); err != io.EOF { // handles no error and fatal error
+				return out, err
+			}
+		}
+
+		if cbs.prev == nil {
+			return nil, io.EOF // input stream is also exhausted: we are done
+		}
+
+		// Pop next value from upstream as input to our command
+		in, err := cbs.prev.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		// Run our command again to refresh current stream
+		cbs.out, cbs.outBinds, err = cbs.cmd.Run(cbs.ctx, in, cbs.prev.outBinds)
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+func (cs Block) Run(ctx context.Context, in record.Record, binds *scope.Bindings) (out record.Stream, outBinds *scope.Bindings, err error) {
+	if len(cs) == 0 {
+		return &record.SingletonStream{Rec: in}, binds, nil // identity
+	} else if len(cs) == 1 {
+		return cs[0].Run(ctx, in, binds)
+	}
+
+	streams := make([]blockStream, len(cs)+1)
+	for i, cmd := range cs {
+		if i == 0 {
+			// dummy entry for input
+			streams[0] = blockStream{
+				out:      &record.SingletonStream{Rec: in},
+				outBinds: binds,
+			}
+		} else {
+			streams[i] = blockStream{
+				prev: &streams[i-1],
+				ctx:  ctx,
+				cmd:  cmd,
+			}
+		}
+	}
+
+	return &streams[len(cs)], binds, nil
+}
