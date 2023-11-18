@@ -2,9 +2,8 @@ package scope
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/daboyuka/hs/program/record"
 )
@@ -119,7 +118,7 @@ func (binds *Bindings) allValuesInto(into map[string]record.Record) {
 func (binds *Bindings) String() string {
 	buf := strings.Builder{}
 	ids := binds.AllIdents()
-	slices.SortFunc(ids, func(a, b Ident) bool { return a.String() < b.String() })
+	slices.SortFunc(ids, func(a, b Ident) int { return strings.Compare(a.String(), b.String()) })
 	for _, id := range ids {
 		val, _ := binds.Get(id)
 		buf.WriteString(id.String())

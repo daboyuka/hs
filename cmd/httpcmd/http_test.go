@@ -2,10 +2,9 @@ package httpcmd
 
 import (
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
-
-	"golang.org/x/exp/rand"
 )
 
 type flakyTransport struct {

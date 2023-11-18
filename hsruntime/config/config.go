@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 
 	"github.com/daboyuka/hs/hsruntime/searchpath"
@@ -56,10 +55,11 @@ func Load(scp *scope.Scope, binds *scope.Bindings) (*scope.Scope, *scope.Binding
 	}
 
 	// Collect and uppercase all names
-	names := maps.Keys(rawVals)
-	upcaseNames := make([]string, len(names))
-	for i, name := range names {
-		upcaseNames[i] = strings.ToUpper(name)
+	names := make([]string, 0, len(rawVals))
+	upcaseNames := make([]string, 0, len(rawVals))
+	for name := range rawVals {
+		names = append(names, name)
+		upcaseNames = append(upcaseNames, strings.ToUpper(name))
 	}
 
 	// Convert (uppercase) names to unique Idents
