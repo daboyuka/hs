@@ -6,8 +6,6 @@ import (
 	"os"
 
 	cookiemonster "github.com/MercuryEngineering/CookieMonster"
-	//_ "github.com/zellyn/kooky/browser/all"
-	_ "github.com/zellyn/kooky/browser/chrome"
 
 	"github.com/daboyuka/hs/hsruntime/searchpath"
 	"github.com/daboyuka/hs/program/record"

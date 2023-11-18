@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/zellyn/kooky"
+	_ "github.com/zellyn/kooky/browser/all" // enable all browsers
 
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
