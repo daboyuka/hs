@@ -2,7 +2,6 @@ package record
 
 import (
 	"io"
-	"sync"
 	"sync/atomic"
 )
 
@@ -22,9 +21,8 @@ type (
 type Stream interface {
 	// Next returns the next Record in the stream, or io.EOF if end-of-stream, or other error if one occurred.
 	// Next never returns both a Record and a non-nil error (as nil is indistinguishable from a real null Record).
-	// Once Next returns io.EOF, every subsequent call will also return io.EOF.
-	// Next is safe for concurrent use by multiple goroutines, although no guarantee of Record ordering is given under
-	// concurrent access.
+	// Once Next returns a non-nil error, every subsequent call returns the same error.
+	// Next is *not* safe for concurrent use by multiple goroutines.
 	Next() (Record, error)
 }
 
@@ -42,30 +40,27 @@ func CollectStream(s Stream) (arr Array, err error) {
 	}
 }
 
-type SliceStream struct {
-	Records []Record
-	mtx     sync.Mutex
-}
+type SliceStream []Record
 
-func (a *SliceStream) Next() (out Record, err error) {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	if len(a.Records) == 0 {
+func (ss *SliceStream) Next() (out Record, err error) {
+	recs := *ss
+	if len(recs) == 0 {
 		return nil, io.EOF
 	}
-	out, a.Records = a.Records[0], a.Records[1:]
+	out, *ss = recs[0], recs[1:]
 	return out, nil
 }
 
 type SingletonStream struct {
 	Rec  Record
-	once atomic.Uintptr
+	done bool
 }
 
 func (t *SingletonStream) Next() (Record, error) {
-	if t.once.Swap(1) != 0 {
+	if t.done {
 		return nil, io.EOF
 	}
+	t.done = true
 	return t.Rec, nil
 }
 
