@@ -144,3 +144,17 @@ func (c *CsvStream) Next() (Record, error) {
 		return out, nil
 	}
 }
+
+// SyncStream wraps another Stream to make it safe for concurrent access by multiple goroutines.
+type SyncStream struct {
+	mtx sync.Mutex
+	s   Stream
+}
+
+func NewSyncStream(s Stream) Stream { return &SyncStream{s: s} }
+
+func (ss *SyncStream) Next() (Record, error) {
+	ss.mtx.Lock()
+	defer ss.mtx.Unlock()
+	return ss.Next()
+}

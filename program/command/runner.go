@@ -15,6 +15,10 @@ func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, inp
 		n = 1
 	}
 
+	if n > 1 {
+		input = record.NewSyncStream(input) // make input threadsafe
+	}
+
 	wg := sync.WaitGroup{}
 	defer wg.Wait() // don't return until everything's shut down
 
