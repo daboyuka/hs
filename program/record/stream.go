@@ -7,12 +7,10 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
-	"sync/atomic"
 )
 
 type RawStream struct {
-	r    io.Reader
-	once atomic.Uintptr
+	r io.Reader
 }
 
 func NewRawStream(r io.Reader) *RawStream {
@@ -20,16 +18,15 @@ func NewRawStream(r io.Reader) *RawStream {
 }
 
 func (r *RawStream) Next() (Record, error) {
-	if r.once.Swap(1) != 0 {
-		return nil, io.EOF
+	if b, err := io.ReadAll(r.r); err != nil {
+		return nil, err
+	} else {
+		return string(b), nil
 	}
-	b, err := io.ReadAll(r.r)
-	return string(b), err
 }
 
 type LineStream struct {
-	r   bufio.Reader
-	mtx sync.Mutex
+	r bufio.Reader
 }
 
 func NewLineStream(r io.Reader) *LineStream {
@@ -37,9 +34,6 @@ func NewLineStream(r io.Reader) *LineStream {
 }
 
 func (l *LineStream) Next() (out Record, err error) {
-	l.mtx.Lock()
-	defer l.mtx.Unlock()
-
 	var buf bytes.Buffer
 	for {
 		data, more, err := l.r.ReadLine()
@@ -67,8 +61,7 @@ func (l *LineStream) Next() (out Record, err error) {
 }
 
 type JSONStream struct {
-	d   json.Decoder
-	mtx sync.Mutex
+	d json.Decoder
 }
 
 func NewJSONStream(r io.Reader) *JSONStream {
@@ -76,30 +69,25 @@ func NewJSONStream(r io.Reader) *JSONStream {
 }
 
 func (j *JSONStream) Next() (out Record, err error) {
-	j.mtx.Lock()
-	defer j.mtx.Unlock()
 	err = j.d.Decode(&out)
-	return
+	return out, err
 }
 
 type CsvStream struct {
-	r   csv.Reader
-	mtx sync.Mutex
+	r csv.Reader
 
-	raw        bool
-	concurrent bool
-	fields     []string
+	raw    bool
+	fields []string
 }
 
 // NewCsvReader creates a Stream by parsing the input io.Reader as comma-separated value format.
 // comma is the separator (should be ',' for true CSV).
 // If raw, no CSV header is expected, and each line becomes a simple Array from field values; otherwise, the first line
 // is interpreted as a header defining field names, and each line becomes an Object using those field names.
-// Next is safe for concurrent use by multiple goroutines iff concurrent is true.
-func NewCsvReader(r io.Reader, comma rune, raw bool, concurrent bool) *CsvStream {
+func NewCsvReader(r io.Reader, comma rune, raw bool) *CsvStream {
 	out := &CsvStream{r: *csv.NewReader(r), raw: raw}
 	out.r.Comma = comma
-	out.r.ReuseRecord = !concurrent // lets csv.Reader recycle Read's return slice
+	out.r.ReuseRecord = true // lets csv.Reader recycle Read's return slice
 	return out
 }
 
@@ -110,11 +98,6 @@ func (c *CsvStream) loadHeader() error {
 }
 
 func (c *CsvStream) nextVals() ([]string, error) {
-	if c.concurrent {
-		c.mtx.Lock()
-		defer c.mtx.Unlock()
-	}
-
 	if !c.raw && c.fields == nil {
 		if err := c.loadHeader(); err != nil {
 			return nil, err
@@ -143,4 +126,18 @@ func (c *CsvStream) Next() (Record, error) {
 		}
 		return out, nil
 	}
+}
+
+// SyncStream wraps another Stream to make it safe for concurrent access by multiple goroutines.
+type SyncStream struct {
+	mtx sync.Mutex
+	s   Stream
+}
+
+func NewSyncStream(s Stream) Stream { return &SyncStream{s: s} }
+
+func (ss *SyncStream) Next() (Record, error) {
+	ss.mtx.Lock()
+	defer ss.mtx.Unlock()
+	return ss.Next()
 }
