@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 
 	"github.com/daboyuka/hs/program/record"
-	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
-func RunParallel(ctx context.Context, cmd Command, binds *scope.Bindings, input record.Stream, output record.Sink, n int, counter *atomic.Uint64) (finalErr error) {
+func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, input record.Stream, output record.Sink, n int, counter *atomic.Uint64) (finalErr error) {
 	if n <= 0 {
 		n = 1
 	}

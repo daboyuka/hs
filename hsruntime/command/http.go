@@ -19,6 +19,7 @@ import (
 	"github.com/daboyuka/hs/program/expr/parser"
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 type RetryFunc func(req RequestAndBody, resp ResponseAndBody, attempt int) (backoff time.Duration, retry bool)
@@ -71,7 +72,7 @@ func NewHttpCommand(method, url, body string, headers []string, scope *scope.Sco
 	return cmd, scope, err
 }
 
-func (h *HttpCommand) Run(ctx context.Context, in record.Record, binds *scope.Bindings) (out record.Stream, outBinds *scope.Bindings, err error) {
+func (h *HttpCommand) Run(ctx context.Context, in record.Record, binds *bindings.Bindings) (out record.Stream, outBinds *bindings.Bindings, err error) {
 	req, err := h.buildRequest(in, binds)
 	if err != nil {
 		return nil, nil, err
@@ -105,7 +106,7 @@ func newHttpBuilder(method, url, body string, headers []string, scp *scope.Scope
 	return
 }
 
-func (h *httpBuilder) buildRequest(in record.Record, binds *scope.Bindings) (req RequestAndBody, err error) {
+func (h *httpBuilder) buildRequest(in record.Record, binds *bindings.Bindings) (req RequestAndBody, err error) {
 	req.Request = &http.Request{
 		Method: h.method,
 		Header: make(http.Header),

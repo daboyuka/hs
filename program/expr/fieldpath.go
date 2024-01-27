@@ -6,6 +6,7 @@ import (
 
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 type FieldPath []Expr
@@ -18,7 +19,7 @@ func CheckValidFieldComponent(expr Expr) error {
 	}
 	return nil
 }
-func (fp FieldPath) Eval(rec record.Record, binds *scope.Bindings) (record.Record, error) {
+func (fp FieldPath) Eval(rec record.Record, binds *bindings.Bindings) (record.Record, error) {
 	return fp.evalWithCtx(rec, rec, binds)
 }
 
@@ -28,7 +29,7 @@ func (fp FieldPath) Eval(rec record.Record, binds *scope.Bindings) (record.Recor
 //	.foo.bar[.baz]
 //
 // then in the final indexing [.baz], baseRec is the value X.foo.bar, while ctxRec is just X.
-func (fp FieldPath) evalWithCtx(baseRec, ctxRec record.Record, binds *scope.Bindings) (record.Record, error) {
+func (fp FieldPath) evalWithCtx(baseRec, ctxRec record.Record, binds *bindings.Bindings) (record.Record, error) {
 	if len(fp) == 0 {
 		return baseRec, nil
 	}
@@ -81,7 +82,7 @@ type BaseFieldPath struct {
 
 func (bfp BaseFieldPath) String() string { return bfp.Base.String() + bfp.Path.String() }
 
-func (bfp BaseFieldPath) Eval(rec record.Record, binds *scope.Bindings) (record.Record, error) {
+func (bfp BaseFieldPath) Eval(rec record.Record, binds *bindings.Bindings) (record.Record, error) {
 	base, err := bfp.Base.Eval(rec, binds)
 	if err != nil {
 		return nil, err

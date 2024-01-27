@@ -13,10 +13,11 @@ import (
 	"github.com/daboyuka/hs/hsruntime/config"
 	"github.com/daboyuka/hs/hsruntime/cookie"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 type Context struct {
-	Globals scope.ScopedBindings
+	Globals bindings.Scoped
 	Funcs   *scope.FuncTable
 
 	ConfigInit   ConfigInitFn
@@ -63,7 +64,7 @@ type Options struct {
 	CookieSpecs []string
 }
 
-// NewDefaultContext returns a default setup of Context, binding standard funcs, loading config, etc.
+// NewDefaultContext returns a default setup of Context, binds standard funcs, loading config, etc.
 func NewDefaultContext(opts Options) (ctx *Context, err error) {
 	ctx = NewContext()
 	ctx.Globals.Scope, ctx.Globals.Binds, err = config.Load(nil, nil)
@@ -115,7 +116,7 @@ func (d *DeferredLoadCookieJar) load() {
 	}
 }
 
-func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings) (http.CookieJar, error) {
+func defaultCookieHostAliasing(base http.CookieJar, globals bindings.Scoped) (http.CookieJar, error) {
 	aliasesIntf, _ := globals.Lookup("COOKIE_HOST_ALIASES")
 
 	switch aliases := aliasesIntf.(type) {
@@ -140,7 +141,7 @@ func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings
 	}
 }
 
-func defaultHostAliasing(base HostAliasFn, globals scope.ScopedBindings) (HostAliasFn, error) {
+func defaultHostAliasing(base HostAliasFn, globals bindings.Scoped) (HostAliasFn, error) {
 	aliasesIntf, _ := globals.Lookup("HOST_ALIASES")
 
 	switch aliases := aliasesIntf.(type) {
@@ -161,7 +162,7 @@ func defaultHostAliasing(base HostAliasFn, globals scope.ScopedBindings) (HostAl
 	}
 }
 
-func getHost(globals scope.ScopedBindings) (string, error) {
+func getHost(globals bindings.Scoped) (string, error) {
 	hostIntf, _ := globals.Lookup("HOST")
 	switch host := hostIntf.(type) {
 	default:
