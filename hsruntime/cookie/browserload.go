@@ -10,7 +10,7 @@ import (
 	_ "github.com/browserutils/kooky/browser/all" // enable all browsers
 
 	"github.com/daboyuka/hs/program/record"
-	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 const (
@@ -33,7 +33,7 @@ func AllSupportedBrowsers() (browsers []string) {
 // loadBrowserCookies loads cookies from browser cookie stores. Only browsers listed in config var browserLoadersConfigVar
 // (string or array of strings) are loaded. If config browserLoaderPrefixesConfigVar is set, only cookies with one of
 // those name prefixes are loaded (if unset, no prefix filtering is done).
-func loadBrowserCookies(globals scope.ScopedBindings) (cookies []*http.Cookie, err error) {
+func loadBrowserCookies(globals bindings.Scoped) (cookies []*http.Cookie, err error) {
 	browsersSet, allBrowsers, prefixes, err := getBrowserLoaderConfig(globals)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func loadBrowserCookies(globals scope.ScopedBindings) (cookies []*http.Cookie, e
 	return cookies, nil
 }
 
-func getBrowserLoaderConfig(globals scope.ScopedBindings) (browsersSet map[string]bool, allBrowsers bool, prefixes []string, err error) {
+func getBrowserLoaderConfig(globals bindings.Scoped) (browsersSet map[string]bool, allBrowsers bool, prefixes []string, err error) {
 	browsersCfgVal, _ := globals.Lookup(browserLoadersConfigVar)
 	browsers, err := record.AsStringsArray(browsersCfgVal, true)
 	if err != nil {

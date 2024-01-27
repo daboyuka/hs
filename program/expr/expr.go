@@ -7,6 +7,7 @@ import (
 
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 var ErrNoBinding = errors.New("reference to unbound variable")
@@ -14,10 +15,10 @@ var ErrNoBinding = errors.New("reference to unbound variable")
 // Expr models an expression. Its String method returns a human-readable form.
 type Expr interface {
 	fmt.Stringer
-	Eval(rec record.Record, binds *scope.Bindings) (record.Record, error)
+	Eval(rec record.Record, binds *bindings.Bindings) (record.Record, error)
 }
 
-func EvalToString(e Expr, rec record.Record, binds *scope.Bindings) (string, error) {
+func EvalToString(e Expr, rec record.Record, binds *bindings.Bindings) (string, error) {
 	if out, err := e.Eval(rec, binds); err != nil {
 		return "", err
 	} else {
@@ -31,12 +32,12 @@ func EvalToString(e Expr, rec record.Record, binds *scope.Bindings) (string, err
 
 type Const struct{ Val record.Record }
 
-func (c Const) Eval(record.Record, *scope.Bindings) (record.Record, error) { return c.Val, nil }
-func (c Const) String() string                                             { return record.CoerceString(c.Val) }
+func (c Const) Eval(record.Record, *bindings.Bindings) (record.Record, error) { return c.Val, nil }
+func (c Const) String() string                                                { return record.CoerceString(c.Val) }
 
 type Var struct{ Id scope.Ident }
 
-func (v Var) Eval(rec record.Record, binds *scope.Bindings) (record.Record, error) {
+func (v Var) Eval(rec record.Record, binds *bindings.Bindings) (record.Record, error) {
 	if val, ok := binds.Get(v.Id); ok {
 		return val, nil
 	}
@@ -51,7 +52,7 @@ type Func struct {
 	Args     []Expr
 }
 
-func (f Func) Eval(rec record.Record, binds *scope.Bindings) (record.Record, error) {
+func (f Func) Eval(rec record.Record, binds *bindings.Bindings) (record.Record, error) {
 	vals := make([]record.Record, len(f.Args))
 	for i, arg := range f.Args {
 		v, err := arg.Eval(rec, binds)

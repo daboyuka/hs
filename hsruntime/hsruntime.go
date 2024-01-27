@@ -11,10 +11,11 @@ import (
 	"github.com/daboyuka/hs/hsruntime/cookie"
 	"github.com/daboyuka/hs/hsruntime/hostalias"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 type Context struct {
-	Globals scope.ScopedBindings
+	Globals bindings.Scoped
 	Funcs   *scope.FuncTable
 
 	ConfigInit   ConfigInitFn
@@ -37,7 +38,7 @@ type Options struct {
 	CookieSpecs []string
 }
 
-// NewDefaultContext returns a default setup of Context, binding standard funcs, loading config, etc.
+// NewDefaultContext returns a default setup of Context, binds standard funcs, loading config, etc.
 func NewDefaultContext(opts Options) (ctx *Context, err error) {
 	ctx = NewContext()
 	ctx.Globals.Scope, ctx.Globals.Binds, err = config.Load(nil, nil)
@@ -106,7 +107,7 @@ func parseTargetCookieHostAlias(src string) (*url.URL, error) {
 	return hostUrl, nil
 }
 
-func defaultHostAliasing(base hostalias.HostAlias, globals scope.ScopedBindings) (hostalias.HostAlias, error) {
+func defaultHostAliasing(base hostalias.HostAlias, globals bindings.Scoped) (hostalias.HostAlias, error) {
 	aliasesIntf, _ := globals.Lookup("HOST_ALIASES")
 
 	switch aliases := aliasesIntf.(type) {

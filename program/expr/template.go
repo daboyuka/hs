@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/daboyuka/hs/program/record"
-	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 // Template is a string template, alternating string literals and embedded expressions (with literal at begin and end).
@@ -27,7 +27,7 @@ func (t Template) String() string {
 	return strings.Join(strs, "")
 }
 
-func (t Template) Eval(rec record.Record, binds *scope.Bindings) (record.Record, error) {
+func (t Template) Eval(rec record.Record, binds *bindings.Bindings) (record.Record, error) {
 	strs := make([]string, 0, len(t.Lits)+len(t.Exprs))
 	strs = append(strs, t.Lits[0])
 	for i, e := range t.Exprs {
