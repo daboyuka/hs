@@ -28,7 +28,7 @@ type Stream interface {
 	Next() (Record, error)
 }
 
-// CollectStream buffers a Stream into an Array of records.
+// CollectStream buffers a Stream of Record into an Array.
 func CollectStream(s Stream) (arr Array, err error) {
 	for {
 		switch r, err := s.Next(); err {

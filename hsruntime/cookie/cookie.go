@@ -6,10 +6,10 @@ import (
 	"os"
 
 	cookiemonster "github.com/MercuryEngineering/CookieMonster"
+	"github.com/daboyuka/hs/program/scope/bindings"
 
 	"github.com/daboyuka/hs/hsruntime/searchpath"
 	"github.com/daboyuka/hs/program/record"
-	"github.com/daboyuka/hs/program/scope"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 	cookiesConfigVar = "COOKIES"
 )
 
-func Load(extraSpecs []string, globals scope.ScopedBindings) (http.CookieJar, error) {
+func Load(extraSpecs []string, globals bindings.Scoped) (http.CookieJar, error) {
 	if extraCookies, err := LoadSpecs(extraSpecs...); err != nil {
 		return nil, err
 	} else if dotFileCookies, err := loadFromDotFiles(); err != nil {
@@ -44,7 +44,7 @@ func loadFromDotFiles() (cookies []*http.Cookie, err error) {
 	return cookies, err
 }
 
-func loadFromCfg(globals scope.ScopedBindings) (cookies []*http.Cookie, err error) {
+func loadFromCfg(globals bindings.Scoped) (cookies []*http.Cookie, err error) {
 	specsCfgVal, _ := globals.Lookup(cookiesConfigVar)
 	specs, err := record.AsStringsArray(specsCfgVal, true)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/daboyuka/hs/program/command"
 	"github.com/daboyuka/hs/program/record"
-	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 type addInputFieldCommand struct {
@@ -13,7 +13,7 @@ type addInputFieldCommand struct {
 	Field string
 }
 
-func (cmd addInputFieldCommand) Run(ctx context.Context, in record.Record, binds *scope.Bindings) (out record.Stream, outBinds *scope.Bindings, err error) {
+func (cmd addInputFieldCommand) Run(ctx context.Context, in record.Record, binds *bindings.Bindings) (out record.Stream, outBinds *bindings.Bindings, err error) {
 	out, outBinds, err = cmd.Cmd.Run(ctx, in, binds)
 	if err == nil {
 		out = addFieldStream{stream: out, field: cmd.Field, val: in}

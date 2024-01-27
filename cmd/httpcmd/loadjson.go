@@ -9,9 +9,10 @@ import (
 	"github.com/daboyuka/hs/program/expr/parser"
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
-func loadJSONTable(spec string, sb scope.ScopedBindings, fns *scope.FuncTable) (scope.ScopedBindings, error) {
+func loadJSONTable(spec string, sb bindings.Scoped, fns *scope.FuncTable) (bindings.Scoped, error) {
 	filename, rest, _ := strings.Cut(spec, ",")
 	varname, keyexprStr, ok := strings.Cut(rest, ",")
 	if !ok {
@@ -45,6 +46,6 @@ func loadJSONTable(spec string, sb scope.ScopedBindings, fns *scope.FuncTable) (
 	}
 
 	s2, ids := scope.NewScope(sb.Scope, varname)
-	b2 := scope.NewBindings(sb.Binds, map[scope.Ident]record.Record{ids[0]: table})
-	return scope.ScopedBindings{Scope: s2, Binds: b2}, nil
+	b2 := bindings.New(sb.Binds, map[scope.Ident]record.Record{ids[0]: table})
+	return bindings.Scoped{Scope: s2, Binds: b2}, nil
 }

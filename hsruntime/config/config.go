@@ -12,6 +12,7 @@ import (
 	"github.com/daboyuka/hs/hsruntime/searchpath"
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
 )
 
 const (
@@ -103,8 +104,8 @@ func loadEnv(existing map[string]any) (merged map[string]any, err error) {
 	return merged, nil
 }
 
-// Load loads all configuration into a new child scope/bindings derived from the given scope/bindings.
-func Load(scp *scope.Scope, binds *scope.Bindings) (*scope.Scope, *scope.Bindings, error) {
+// Load loads all configuration into a new child scope/binds derived from the given scope/binds.
+func Load(scp *scope.Scope, binds *bindings.Bindings) (*scope.Scope, *bindings.Bindings, error) {
 	rawVals, err := loadYAMLs(nil)
 	if err != nil {
 		return nil, nil, err
@@ -131,5 +132,5 @@ func Load(scp *scope.Scope, binds *scope.Bindings) (*scope.Scope, *scope.Binding
 		vals[ids[i]] = rawVals[name]
 	}
 
-	return nextScp, scope.NewBindings(binds, vals), nil
+	return nextScp, bindings.New(binds, vals), nil
 }
