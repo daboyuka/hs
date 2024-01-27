@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/daboyuka/hs/stream"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
@@ -155,7 +156,7 @@ func openInput(r io.Reader, infmt string) (parsed record.Stream, err error) {
 
 	switch infmt {
 	case "null":
-		return &record.SingletonStream{Rec: nil}, nil
+		return stream.Singleton[record.Record](nil), nil
 	case "raw":
 		return record.NewRawStream(r), nil
 	case "lines":

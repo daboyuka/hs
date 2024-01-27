@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/daboyuka/hs/program/record"
+	"github.com/daboyuka/hs/stream"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -24,8 +25,8 @@ func attachProgressLogger(ctx context.Context, in record.Stream, enable bool, ma
 	}
 
 	outCounter = &atomic.Uint64{}
-	counter := &record.CountingStream{Stream: in}
-	outBuf := record.ChannelStream{Ch: make(chan record.RecordAndError, maxBuffer)}
+	counter := &stream.CountingStream[record.Record]{Stream: in}
+	outBuf := stream.ChannelStream[record.Record]{Ch: make(chan record.RecordAndError, maxBuffer)}
 	go func() {
 		doneCh := ctx.Done()
 		for {
@@ -36,7 +37,7 @@ func attachProgressLogger(ctx context.Context, in record.Stream, enable bool, ma
 			}
 
 			select {
-			case outBuf.Ch <- record.RecordAndError{Record: r, Err: err}:
+			case outBuf.Ch <- record.RecordAndError{Val: r, Err: err}:
 			case <-doneCh:
 				return
 			}
@@ -49,7 +50,7 @@ func attachProgressLogger(ctx context.Context, in record.Stream, enable bool, ma
 	return outBuf, outCounter, func() { <-doneCh }
 }
 
-func runProgressLogger(ctx context.Context, doneCh chan<- struct{}, in *record.CountingStream, out *atomic.Uint64, interval time.Duration, w io.Writer) {
+func runProgressLogger(ctx context.Context, doneCh chan<- struct{}, in *stream.CountingStream[record.Record], out *atomic.Uint64, interval time.Duration, w io.Writer) {
 	defer close(doneCh)
 	abortCh := ctx.Done()
 

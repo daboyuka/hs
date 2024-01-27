@@ -93,3 +93,9 @@ type Scoped struct {
 func (sb Scoped) Lookup(name string) (record.Record, bool) {
 	return sb.Binds.Get(sb.Scope.Lookup(name))
 }
+
+// BoundRecord is a record.Record and Bindings pair.
+type BoundRecord struct {
+	Record record.Record
+	Binds  *Bindings
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
 	"github.com/daboyuka/hs/program/scope/bindings"
+	"github.com/daboyuka/hs/stream"
 )
 
 type HttpBuildCommand struct {
@@ -24,5 +25,5 @@ func (h *HttpBuildCommand) Run(ctx context.Context, in record.Record, binds *bin
 	if err != nil {
 		return nil, nil, err
 	}
-	return &record.SingletonStream{Rec: requestToRecord(req)}, binds, err
+	return stream.Singleton[record.Record](requestToRecord(req)), binds, err
 }

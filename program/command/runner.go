@@ -8,6 +8,7 @@ import (
 
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope/bindings"
+	"github.com/daboyuka/hs/stream"
 )
 
 func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, input record.Stream, output record.Sink, n int, counter *atomic.Uint64) (finalErr error) {
@@ -16,7 +17,7 @@ func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, inp
 	}
 
 	if n > 1 {
-		input = record.NewSyncStream(input) // make input threadsafe
+		input = stream.Sync(input) // make input threadsafe
 	}
 
 	wg := sync.WaitGroup{}
