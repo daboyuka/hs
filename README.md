@@ -81,6 +81,15 @@ reqresp = {"response":<response>, ...other keys as request...}
 headers  = {"hkey1":"hval1" OR ["hval1",...], ...}
 ```
 
+For a request where an HTTP protocol or network error occurred instead of a server response,
+`response` instead has this schema:
+```
+response = {"error":"the error here"}
+```
+
+If retries occurred (see `-r` flag), `response` will have an added `retries` key, an array of
+objects with `response` schema for responses prior to the final response.
+
 ### Templating and Expressions
 
 **Templates:** some arguments (url, body, headers) are "templated", which may contain escapes like

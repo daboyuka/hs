@@ -19,14 +19,16 @@ var server = http.Server{
 func init() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r)
-		w.WriteHeader(200)
+		w.WriteHeader(*statusFlag)
 	})
 }
 
 var httpsFlag *bool
+var statusFlag *int
 
 func init() {
 	httpsFlag = rootCmd.PersistentFlags().BoolP("secure", "s", false, "listen for HTTPS (instead of HTTP)")
+	statusFlag = rootCmd.PersistentFlags().IntP("status", "S", 200, "set response status code (default 200)")
 }
 
 var rootCmd = cobra.Command{

@@ -286,7 +286,7 @@ func requestResponseToRecord(req RequestAndBody, resp ResponseAndBody, retries [
 		for i, retry := range retries {
 			retryObjs[i] = responseToRecord(retry)
 		}
-		ret["retries"] = retryObjs
+		ret["response"].(record.Object)["retries"] = retryObjs
 	}
 	return ret
 }
