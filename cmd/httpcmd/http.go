@@ -71,8 +71,8 @@ func init() {
 	runFlags.StringVarP(&runFlagVals.failfile, "fails", "F", "-", "write fail responses (connection error or non-2xx response) to this file, or stdout if '-'")
 	runFlags.IntVarP(&runFlagVals.retries, "retry", "r", 0, "num. retries on HTTP error or 5xx response")
 
-	outfmts := []string{"full", "reqresp", "resp", "bodycode", "body"}
-	runFlagVals.outfmt = "bodycode" // default
+	outfmts := []string{"auto", "full", "reqresp", "resp", "bodycode", "body"}
+	runFlagVals.outfmt = "auto" // default
 	_ = runFlags.VarPF(flagvar.NewEnumFlag(&runFlagVals.outfmt, false, outfmts...), "out", "o", "set output mode (one of "+strings.Join(outfmts, " ")+")")
 
 	runFlags.IntVarP(&runFlagVals.parallel, "parallel", "P", 1, "request parallelism (no request ordering guaranteed when greater than 1)")
@@ -187,7 +187,15 @@ func autoInputFormat(r io.Reader) (infmt string, r2 io.Reader, err error) {
 
 type outputFormatter func(record.Record) (record.Record, error)
 
-func openOutput(outfmt string) outputFormatter {
+func newOutputFormatter(outfmt string, tty bool) outputFormatter {
+	if outfmt == "auto" {
+		if tty {
+			outfmt = "body"
+		} else {
+			outfmt = "reqresp"
+		}
+	}
+
 	switch outfmt {
 	case "reqresp", "full":
 		return func(rr record.Record) (record.Record, error) { return rr, nil }
@@ -213,6 +221,19 @@ func openOutput(outfmt string) outputFormatter {
 		}
 	}
 	panic(fmt.Errorf("unsupported outfmt '%s'", outfmt))
+}
+
+func openOutput(out, err io.StringWriter, outfmt string) *responseSplitFileSink {
+	isTTY := false
+	if f, ok := out.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
+		isTTY = true
+	}
+
+	return &responseSplitFileSink{
+		OutFmt: newOutputFormatter(outfmt, isTTY),
+		Out:    out,
+		Err:    err,
+	}
 }
 
 type responseSplitFileSink struct {

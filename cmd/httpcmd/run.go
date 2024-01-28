@@ -40,11 +40,7 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	}
 
-	sink := &responseSplitFileSink{
-		OutFmt: openOutput(runFlagVals.outfmt),
-		Out:    os.Stdout,
-		Err:    os.Stdout,
-	}
+	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt)
 	if fn := runFlagVals.failfile; fn != "" && fn != "-" {
 		f, err := os.Create(fn)
 		if err != nil {
