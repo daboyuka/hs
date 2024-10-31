@@ -21,29 +21,28 @@ type Context struct {
 	Client       *http.Client
 }
 
-// HostAliasFn applies host aliasing rules, returning a new hostname (or the same hostname if no aliasing is applied).
+// HostAliasFn applies host aliasing rules, returning a new hostname (or "" if no aliasing is applied).
 type HostAliasFn func(hostname string) (newHostname string)
 
-func noHostAliasing(hostname string) string { return hostname }
+func noHostAliasing(hostname string) string { return "" }
 
 type SimpleHostAliases map[string]string
 
 func (sha SimpleHostAliases) GetAlias(hostname string) string {
-	fmt.Println(hostname, sha)
 	if h2, ok := sha[hostname]; ok {
 		return h2
 	}
-	return hostname
+	return ""
 }
 
 func ComposeHostAliasing(base, next HostAliasFn) HostAliasFn {
-	return func(hostname string) string { return next(base(hostname)) }
+	return func(hostname string) string {
+		if hostname2 := base(hostname); hostname2 != "" {
+			return hostname2
+		}
+		return next(hostname)
+	}
 }
-
-//type emptyJar struct{}
-//
-//func (emptyJar) SetCookies(*url.URL, []*http.Cookie) {}
-//func (emptyJar) Cookies(*url.URL) []*http.Cookie     { return nil }
 
 func NewContext() *Context {
 	return &Context{
@@ -82,13 +81,13 @@ func NewDefaultContext(opts Options) (ctx *Context, err error) {
 func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings) (http.CookieJar, error) {
 	aliasesIntf, _ := globals.Lookup("COOKIE_HOST_ALIASES")
 
-	aliasJar := make(cookie.HostAliasJarAdapter)
 	switch aliases := aliasesIntf.(type) {
 	default:
 		return nil, fmt.Errorf("expected map for COOKIE_HOST_ALIASES, got %T", aliases)
 	case nil:
 		return base, nil
 	case map[string]interface{}:
+		aliasJar := make(cookie.HostAliasJarAdapter)
 		for k, v := range aliases {
 			host, ok := v.(string)
 			if !ok {
@@ -100,22 +99,20 @@ func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings
 			}
 			aliasJar[k] = &url.URL{Scheme: scheme, Host: host}
 		}
-		// fall through
+		return cookie.Adapt(base, aliasJar.Adapt), nil
 	}
-
-	return cookie.Adapt(base, aliasJar.Adapt), nil
 }
 
 func defaultHostAliasing(base HostAliasFn, globals scope.ScopedBindings) (HostAliasFn, error) {
 	aliasesIntf, _ := globals.Lookup("HOST_ALIASES")
 
-	simpleAliases := make(SimpleHostAliases)
 	switch aliases := aliasesIntf.(type) {
 	default:
 		return nil, fmt.Errorf("expected map for HOST_ALIASES, got %T", aliases)
 	case nil:
 		return base, nil
 	case map[string]interface{}:
+		simpleAliases := make(SimpleHostAliases, len(aliases))
 		for k, v := range aliases {
 			vStr, ok := v.(string)
 			if !ok {
@@ -123,10 +120,8 @@ func defaultHostAliasing(base HostAliasFn, globals scope.ScopedBindings) (HostAl
 			}
 			simpleAliases[k] = vStr
 		}
-		// fall through
+		return ComposeHostAliasing(base, simpleAliases.GetAlias), nil
 	}
-
-	return ComposeHostAliasing(base, simpleAliases.GetAlias), nil
 }
 
 func getHost(globals scope.ScopedBindings) (string, error) {
