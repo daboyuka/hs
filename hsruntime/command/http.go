@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -170,12 +169,9 @@ func (h *httpBuilder) autodetectContentTypeIfNeeded(req *RequestAndBody) {
 		return
 	}
 
-	// Autodetect/log only once
+	// Autodetect only once
 	h.autoContentTypeOnce.Do(func() {
 		h.autoContentType = datafmt.Autodetect(req.BodyContent).ContentType() // = "" if Unknown
-		if h.autoContentType != "" {
-			log.Printf("autodetected payload Content-Type: %s", h.autoContentType)
-		}
 	})
 
 	if h.autoContentType != "" {

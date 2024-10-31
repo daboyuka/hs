@@ -2,7 +2,6 @@ package cookie
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -58,9 +57,6 @@ func loadBrowserCookies(globals scope.ScopedBindings) (cookies []*http.Cookie, e
 			}
 		}
 	}
-	if len(cookies) > 0 {
-		log.Printf("loaded %d cookies from browsers", len(cookies))
-	}
 
 	return cookies, nil
 }
@@ -86,12 +82,6 @@ func getBrowserLoaderConfig(globals scope.ScopedBindings) (browsersSet map[strin
 			break
 		}
 		browsersSet[browser] = true
-	}
-
-	if allBrowsers {
-		log.Printf("loading cookies from all browsers")
-	} else {
-		log.Printf("loading cookies from browsers: %s", strings.Join(browsers, ","))
 	}
 
 	return browsersSet, allBrowsers, prefixes, nil

@@ -3,7 +3,6 @@ package httpcmd
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -177,10 +176,8 @@ func autoInputFormat(r io.Reader) (infmt string, r2 io.Reader, err error) {
 
 	switch df {
 	case datafmt.JSON:
-		log.Printf("autodetected input: json")
 		return "json", r2, nil
 	default:
-		log.Printf("autodetected input: lines")
 		return "lines", r2, nil
 	}
 }
