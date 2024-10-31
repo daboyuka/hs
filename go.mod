@@ -1,6 +1,6 @@
 module github.com/daboyuka/hs
 
-go 1.21
+go 1.22
 
 require (
 	github.com/MercuryEngineering/CookieMonster v0.0.0-20180304172713-1584578b3403
