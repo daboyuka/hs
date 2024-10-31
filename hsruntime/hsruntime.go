@@ -3,9 +3,12 @@ package hsruntime
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/daboyuka/hs/hsruntime/config"
 	"github.com/daboyuka/hs/hsruntime/cookie"
@@ -69,13 +72,42 @@ func NewDefaultContext(opts Options) (ctx *Context, err error) {
 	if ctx.HostAliasing, err = defaultHostAliasing(noHostAliasing, ctx.Globals); err != nil {
 		return nil, err
 	}
-	if ctx.Client.Jar, err = cookie.Load(opts.CookieSpecs, ctx.Globals); err != nil {
-		return nil, err
-	} else if ctx.Client.Jar, err = defaultCookieHostAliasing(ctx.Client.Jar, ctx.Globals); err != nil {
+
+	ctx.Client.Jar = &DeferredLoadCookieJar{ // don't actually load cookies until needed
+		LoadFn: func() (http.CookieJar, error) { return cookie.Load(opts.CookieSpecs, ctx.Globals) },
+	}
+	if ctx.Client.Jar, err = defaultCookieHostAliasing(ctx.Client.Jar, ctx.Globals); err != nil {
 		return nil, err
 	}
 
 	return ctx, nil
+}
+
+// DeferredLoadCookieJar is an http.CookieJar that only constructs its underlying jar (using LoadFn) on use.
+type DeferredLoadCookieJar struct {
+	LoadFn func() (http.CookieJar, error)
+
+	once sync.Once
+	jar  http.CookieJar
+}
+
+func (d *DeferredLoadCookieJar) SetCookies(u *url.URL, cookies []*http.Cookie) {
+	d.once.Do(d.load)
+	d.jar.SetCookies(u, cookies)
+}
+
+func (d *DeferredLoadCookieJar) Cookies(u *url.URL) []*http.Cookie {
+	d.once.Do(d.load)
+	return d.jar.Cookies(u)
+}
+
+func (d *DeferredLoadCookieJar) load() {
+	if j, err := d.LoadFn(); err != nil {
+		log.Printf("error: failed to load cookiejar: %s", err)
+		d.jar, _ = cookiejar.New(nil)
+	} else {
+		d.jar = j
+	}
 }
 
 func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings) (http.CookieJar, error) {
