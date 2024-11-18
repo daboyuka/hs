@@ -22,7 +22,6 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		bodySrc = args[1]
 	}
 
-	ctx := context.Background()
 	hctx, err := hsruntime.NewDefaultContext(hsruntime.Options{CookieSpecs: runFlagVals.cookies})
 	if err != nil {
 		return err
@@ -61,7 +60,9 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	}
 
-	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt)
+	isOutTTY := isOutputTTY(os.Stdout)
+
+	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt, isOutTTY)
 	if fn := runFlagVals.failfile; fn != "" && fn != "-" {
 		f, err := os.Create(fn)
 		if err != nil {
@@ -75,5 +76,12 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		sink.Err = f
 	}
 
-	return command.RunParallel(ctx, hcmd, binds, input, sink, runFlagVals.parallel)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && !isOutTTY)
+	input, outCounter, awaitProgressLogger := attachProgressLogger(ctx, input, enableProgress, maxInputBufferRecords, time.Second/4, os.Stderr)
+	defer awaitProgressLogger()
+
+	defer cancel()
+	return command.RunParallel(ctx, hcmd, binds, input, sink, runFlagVals.parallel, outCounter)
 }

@@ -60,6 +60,7 @@ rflags (run flags):
                     body (payload only), bodycode (payload + status), or auto (as body if stdout is tty,
                     as reqresp otherwise) (default auto)
   -P pll          : run at most pll requests in parallel (default 1)
+  -p mode         : show progress bar; mode one of "auto" (default = if stdout not tty), "true", "false"
   -r retries      : retry failed requests (conn. error / non-2xx status) up to retries times
 ```
 

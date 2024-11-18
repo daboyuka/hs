@@ -4,12 +4,13 @@ import (
 	"context"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
 )
 
-func RunParallel(ctx context.Context, cmd Command, binds *scope.Bindings, input record.Stream, output record.Sink, n int) (finalErr error) {
+func RunParallel(ctx context.Context, cmd Command, binds *scope.Bindings, input record.Stream, output record.Sink, n int, counter *atomic.Uint64) (finalErr error) {
 	if n <= 0 {
 		n = 1
 	}
@@ -39,6 +40,9 @@ func RunParallel(ctx context.Context, cmd Command, binds *scope.Bindings, input 
 				if err != nil {
 					errCh <- err
 					return
+				}
+				if counter != nil {
+					counter.Add(1)
 				}
 
 				for {

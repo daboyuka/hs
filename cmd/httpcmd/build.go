@@ -55,5 +55,5 @@ func cmdBuild(cmd *cobra.Command, args []string) (finalErr error) {
 	}
 	sink := &record.StringWriterSink{Writer: os.Stdout}
 
-	return command.RunParallel(ctx, hcmd, binds, input, sink, 1)
+	return command.RunParallel(ctx, hcmd, binds, input, sink, 1, nil)
 }

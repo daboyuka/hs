@@ -36,9 +36,10 @@ var (
 	runFlagVals struct {
 		cookies  []string
 		failfile string
-		retries  int
 		outfmt   string
 		parallel int
+		progress string
+		retries  int
 	}
 )
 
@@ -68,13 +69,18 @@ func init() {
 	)
 
 	runFlags.StringVarP(&runFlagVals.failfile, "fails", "F", "-", "write fail responses (connection error or non-2xx response) to this file, or stdout if '-'")
-	runFlags.IntVarP(&runFlagVals.retries, "retry", "r", 0, "num. retries on HTTP error or 5xx response")
 
 	outfmts := []string{"auto", "full", "reqresp", "resp", "bodycode", "body"}
 	runFlagVals.outfmt = "auto" // default
-	_ = runFlags.VarPF(flagvar.NewEnumFlag(&runFlagVals.outfmt, false, outfmts...), "out", "o", "set output mode (one of "+strings.Join(outfmts, " ")+")")
+	_ = runFlags.VarPF(flagvar.NewEnumFlag(&runFlagVals.outfmt, false, outfmts...), "out", "o", "set output mode (one of: "+strings.Join(outfmts, " ")+")")
 
 	runFlags.IntVarP(&runFlagVals.parallel, "parallel", "P", 1, "request parallelism (no request ordering guaranteed when greater than 1)")
+
+	progressOpts := []string{"true", "false", "auto"}
+	runFlagVals.progress = "auto" // default
+	runFlags.VarPF(flagvar.NewEnumFlag(&runFlagVals.progress, false, progressOpts...), "progress", "p", "toggle progress meter (one of: "+strings.Join(progressOpts, " ")+"); auto = only if stdout is non-term redirected")
+
+	runFlags.IntVarP(&runFlagVals.retries, "retry", "r", 0, "num. retries on HTTP error or 5xx response")
 }
 
 func init() {
@@ -182,6 +188,11 @@ func autoInputFormat(r io.Reader) (infmt string, r2 io.Reader, err error) {
 	}
 }
 
+func isOutputTTY(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}
+
 type outputFormatter func(record.Record) (record.Record, error)
 
 func newOutputFormatter(outfmt string, tty bool) outputFormatter {
@@ -220,12 +231,7 @@ func newOutputFormatter(outfmt string, tty bool) outputFormatter {
 	panic(fmt.Errorf("unsupported outfmt '%s'", outfmt))
 }
 
-func openOutput(out, err io.StringWriter, outfmt string) *responseSplitFileSink {
-	isTTY := false
-	if f, ok := out.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
-		isTTY = true
-	}
-
+func openOutput(out, err io.StringWriter, outfmt string, isTTY bool) *responseSplitFileSink {
 	return &responseSplitFileSink{
 		OutFmt: newOutputFormatter(outfmt, isTTY),
 		Out:    out,

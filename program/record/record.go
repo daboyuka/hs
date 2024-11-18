@@ -68,3 +68,43 @@ func (t *SingletonStream) Next() (Record, error) {
 	}
 	return t.Rec, nil
 }
+
+type CountingStream struct {
+	Stream
+	count atomic.Int64
+}
+
+func (c *CountingStream) Next() (Record, error) {
+	r, err := c.Stream.Next()
+	if err != nil {
+		c.count.Store(-c.count.Load() - 1) // -n-1 the count to indicate completion
+		return nil, err
+	}
+	c.count.Add(1)
+	return r, nil
+}
+func (c *CountingStream) Count() (n int, done bool) {
+	if n = int(c.count.Load()); n < 0 {
+		n, done = -(n + 1), true
+	}
+	return n, done
+}
+
+type RecordAndError struct {
+	Record
+	Err error
+}
+
+type ChannelStream struct {
+	Ch chan RecordAndError
+}
+
+func (c ChannelStream) Next() (Record, error) {
+	r, ok := <-c.Ch
+	if !ok {
+		return nil, io.EOF
+	} else if r.Err != nil {
+		return nil, r.Err
+	}
+	return r.Record, nil
+}
