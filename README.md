@@ -186,6 +186,12 @@ cookie_host_aliases:
 
 ## HTTP Engine
 
+### Ctrl+C (interrupt)
+
+If `hs` receives SIGINT (Ctrl+C) while running HTTP requests, it will finish any in-flight requests normally, but
+subsequent requests will return immediately with response `{"error":"request not sent"}`. If SIGINT is sent again,
+`hs` will terminate in-flight requests (with typical response `{"error":"...: context canceled"}`, but not guaranteed).
+
 ### Content-Type
 If a request has a body _and_ no `Content-Type` header is given, `hs` will try to autodetect and set
 the header. On the _first_ request (that meets these criteria), it uses heuristics on (up to) 512 body

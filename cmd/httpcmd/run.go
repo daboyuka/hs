@@ -63,6 +63,8 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 	input, outCounter, awaitProgressLogger := attachProgressLogger(ctx, input, enableProgress, maxInputBufferRecords, time.Second/4, os.Stderr)
 	defer awaitProgressLogger()
 
+	attachInterruptForHttpRunner(ctx, hcmd.SetDryRun, cancel)
+
 	defer cancel()
 	return command.RunParallel(ctx, hcmd, binds, input, sink, runFlagVals.parallel, outCounter)
 }

@@ -3,12 +3,14 @@ package command
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/daboyuka/hs/hsruntime"
@@ -48,6 +50,8 @@ type httpBuilder struct {
 type httpRunner struct {
 	client *http.Client
 	retry  RetryFunc
+
+	dryrun atomic.Bool
 }
 
 type HttpCommand struct {
@@ -179,11 +183,18 @@ func (h *httpBuilder) autodetectContentTypeIfNeeded(req *RequestAndBody) {
 	}
 }
 
-func (h httpRunner) run(ctx context.Context, req RequestAndBody) (out record.Stream, err error) {
+var dryrunErr = errors.New("request not sent")
+
+func (h *httpRunner) run(ctx context.Context, req RequestAndBody) (out record.Stream, err error) {
 	req.Request = req.Request.WithContext(ctx)
 
 	req.Header.Set("Accept-Encoding", "gzip")
 	outReq := RequestAndBody{Request: req.Clone(ctx), BodyContent: req.BodyContent}
+
+	if h.dryrun.Load() {
+		outRec := requestResponseToRecord(outReq, ResponseAndBody{HTTPError: dryrunErr}, nil)
+		return &record.SingletonStream{Rec: outRec}, nil
+	}
 
 	var resp ResponseAndBody
 	var retries []ResponseAndBody
@@ -232,6 +243,10 @@ func (h httpRunner) run(ctx context.Context, req RequestAndBody) (out record.Str
 	outRec := requestResponseToRecord(outReq, resp, retries)
 	return &record.SingletonStream{Rec: outRec}, nil
 }
+
+// SetDryRun causes subsequent calls to run to immediately respond with status code 000 and human-readable error message.
+// In-flight requests are unaffected.
+func (h *httpRunner) SetDryRun() { h.dryrun.Store(true) }
 
 func headersToRecord(h http.Header) record.Record {
 	out := make(record.Object, len(h))

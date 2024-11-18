@@ -45,12 +45,12 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		}
 	}
 
-	var hcmd command.Command
-	hcmd, scp, err = hscommand.NewHttpCommand(method, urlSrc, bodySrc, buildFlagVals.headers, scp, hctx, retry)
+	hcmdRaw, scp, err := hscommand.NewHttpCommand(method, urlSrc, bodySrc, buildFlagVals.headers, scp, hctx, retry)
 	if err != nil {
 		return err
 	}
 
+	var hcmd command.Command = hcmdRaw
 	if runFlagVals.outfmt == "full" {
 		hcmd = addInputFieldCommand{Cmd: hcmd, Field: "input"}
 	}
@@ -81,6 +81,8 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && !isOutTTY)
 	input, outCounter, awaitProgressLogger := attachProgressLogger(ctx, input, enableProgress, maxInputBufferRecords, time.Second/4, os.Stderr)
 	defer awaitProgressLogger()
+
+	attachInterruptForHttpRunner(ctx, hcmdRaw.SetDryRun, cancel)
 
 	defer cancel()
 	return command.RunParallel(ctx, hcmd, binds, input, sink, runFlagVals.parallel, outCounter)
