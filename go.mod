@@ -32,3 +32,7 @@ require (
 )
 
 replace github.com/browserutils/kooky v0.2.2 => github.com/DP19/kooky v0.2.4
+
+retract (
+	v0.1.5 // force-pushed tag like a bad guy
+)
