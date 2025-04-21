@@ -41,9 +41,9 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	}
 
-	isOutTTY := isOutputTTY(os.Stdout)
+	isNonFileOut := isNonFileOutput(os.Stdout)
 
-	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt, isOutTTY)
+	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt, isNonFileOut)
 	if fn := runFlagVals.failfile; fn != "" && fn != "-" {
 		f, err := os.Create(fn)
 		if err != nil {
@@ -59,7 +59,7 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && !isOutTTY)
+	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && !isNonFileOut)
 	input, outCounter, awaitProgressLogger := attachProgressLogger(ctx, input, enableProgress, maxInputBufferRecords, time.Second/4, os.Stderr)
 	defer awaitProgressLogger()
 

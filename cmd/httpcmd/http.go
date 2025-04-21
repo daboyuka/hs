@@ -188,16 +188,21 @@ func autoInputFormat(r io.Reader) (infmt string, r2 io.Reader, err error) {
 	}
 }
 
-func isOutputTTY(w io.Writer) bool {
-	f, ok := w.(*os.File)
-	return ok && term.IsTerminal(int(f.Fd()))
+func isNonFileOutput(w io.Writer) bool {
+	if f, ok := w.(*os.File); !ok {
+		return true
+	} else if stat, err := f.Stat(); err != nil {
+		return true // fallback to non-file
+	} else {
+		return stat.Mode()&os.ModeType != 0
+	}
 }
 
 type outputFormatter func(record.Record) (record.Record, error)
 
-func newOutputFormatter(outfmt string, tty bool) outputFormatter {
+func newOutputFormatter(outfmt string, defaultToBodyOnly bool) outputFormatter {
 	if outfmt == "auto" {
-		if tty {
+		if defaultToBodyOnly {
 			outfmt = "body"
 		} else {
 			outfmt = "reqresp"
@@ -231,9 +236,9 @@ func newOutputFormatter(outfmt string, tty bool) outputFormatter {
 	panic(fmt.Errorf("unsupported outfmt '%s'", outfmt))
 }
 
-func openOutput(out, err io.StringWriter, outfmt string, isTTY bool) *responseSplitFileSink {
+func openOutput(out, err io.StringWriter, outfmt string, defaultToBodyOnly bool) *responseSplitFileSink {
 	return &responseSplitFileSink{
-		OutFmt: newOutputFormatter(outfmt, isTTY),
+		OutFmt: newOutputFormatter(outfmt, defaultToBodyOnly),
 		Out:    out,
 		Err:    err,
 	}
