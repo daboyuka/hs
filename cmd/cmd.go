@@ -18,11 +18,7 @@ func Execute() error {
 var rootCmd = &cobra.Command{
 	Use:   "hs",
 	Short: "a tool for batch, data-driven HTTP requests",
-	Long:  `HScript is a tool for making batch, data-driven HTTP requests`,
-	// Args:  cobra.ArbitraryArgs,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(args)
-	},
+	Long:  `HScript is a tool for making batch, data-driven HTTP requests. See full docs at https://github.com/daboyuka/hs.`,
 }
 
 func init() {
