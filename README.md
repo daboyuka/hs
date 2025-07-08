@@ -113,10 +113,6 @@ foo         lookup variable "foo" (lowercase)
 FOO         lookup global/config variable "FOO" (uppercase)
 .[<expr>]   lookup that field/array-idx <expr> (evaluated) in record (object/array)
 
-(<expr>)           grouping
-func <expr1> ...   run function "func" with args <expr1> (evaluated), ...
-                   (only valid as top-level expression, or in grouping or index lookup)
-
 "string"    string literal
             special: escape \(<expr>) templates <expr> into the string
 123         numeric literal (integer only)
@@ -126,7 +122,7 @@ Examples:
 ```
 .foo[123].bar["baz"][321]
 FOO[123]
-concat .foo (lcase .bar) "baz: \(.baz)"
+.table[.key]
 ```
 
 ## Config and Globals
