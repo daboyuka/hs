@@ -19,10 +19,14 @@ type Context struct {
 	Globals scope.ScopedBindings
 	Funcs   *scope.FuncTable
 
+	ConfigInit   ConfigInitFn
 	DefaultHost  string
 	HostAliasing HostAliasFn
 	Client       *http.Client
 }
+
+// ConfigInitFn is a function that augments the default configuration
+type ConfigInitFn func(cfg string) (string, error)
 
 // HostAliasFn applies host aliasing rules, returning a new hostname (or "" if no aliasing is applied).
 type HostAliasFn func(hostname string) (newHostname string)
@@ -49,6 +53,7 @@ func ComposeHostAliasing(base, next HostAliasFn) HostAliasFn {
 
 func NewContext() *Context {
 	return &Context{
+		ConfigInit:   config.DefaultConfiguration,
 		HostAliasing: noHostAliasing,
 		Client:       &http.Client{},
 	}
