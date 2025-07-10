@@ -27,6 +27,15 @@ func init() {
 
 	rootCmd.AddCommand(exprcmd.Cmd)
 
+	rootCmd.AddCommand(&cobra.Command{
+		Use:     "init",
+		Aliases: []string{"init"},
+		Short:   "initialize configuration file",
+		Long:    "initialize configuration file",
+		Args:    cobra.NoArgs,
+		RunE:    cmdInit,
+	})
+
 	oldHelp := rootCmd.HelpFunc()
 	rootCmd.SetHelpFunc(func(c *cobra.Command, args []string) {
 		oldHelp(c, args)

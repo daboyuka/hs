@@ -9,6 +9,7 @@ import (
 
 	"github.com/daboyuka/hs/hsruntime"
 	hscommand "github.com/daboyuka/hs/hsruntime/command"
+	"github.com/daboyuka/hs/hsruntime/config"
 	"github.com/daboyuka/hs/hsruntime/plugin"
 	"github.com/daboyuka/hs/program/command"
 )
@@ -21,6 +22,8 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	} else if err := plugin.Apply(hctx); err != nil {
 		return err
+	} else if err := config.WarnMissingBaseConfiguration(); err != nil {
+		os.Stderr.WriteString("Warning: " + err.Error() + "\n")
 	}
 	scp, binds := hctx.Globals.Scope, hctx.Globals.Binds
 
