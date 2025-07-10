@@ -12,22 +12,23 @@ import (
 )
 
 func Execute() error {
-	return rootCmd.Execute()
+	return RootCmd.Execute()
 }
 
-var rootCmd = &cobra.Command{
+// RootCmd is the base cobra command for hs. Plugins/importers may override its fields to change the help message, etc.
+var RootCmd = &cobra.Command{
 	Use:   "hs",
 	Short: "a tool for batch, data-driven HTTP requests",
-	Long:  `HScript is a tool for making batch, data-driven HTTP requests. See full docs at https://github.com/daboyuka/hs.`,
+	Long:  `HScript is a tool for making batch, data-driven HTTP requests. See full docs at https://github.com/daboyuka/hs`,
 }
 
 func init() {
-	rootCmd.AddGroup(httpcmd.Group)
-	rootCmd.AddCommand(httpcmd.Commands...)
+	RootCmd.AddGroup(httpcmd.Group)
+	RootCmd.AddCommand(httpcmd.Commands...)
 
-	rootCmd.AddCommand(exprcmd.Cmd)
+	RootCmd.AddCommand(exprcmd.Cmd)
 
-	rootCmd.AddCommand(&cobra.Command{
+	RootCmd.AddCommand(&cobra.Command{
 		Use:     "init",
 		Aliases: []string{"init"},
 		Short:   "initialize configuration file",
@@ -36,8 +37,8 @@ func init() {
 		RunE:    cmdInit,
 	})
 
-	oldHelp := rootCmd.HelpFunc()
-	rootCmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+	oldHelp := RootCmd.HelpFunc()
+	RootCmd.SetHelpFunc(func(c *cobra.Command, args []string) {
 		oldHelp(c, args)
 		out := c.OutOrStdout()
 		_, _ = fmt.Fprintln(out, "")
