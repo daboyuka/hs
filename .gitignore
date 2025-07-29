@@ -1,3 +1,7 @@
 # local config
 .hs
 .hscookie
+
+# Build/release
+dist/
+release/release.yml

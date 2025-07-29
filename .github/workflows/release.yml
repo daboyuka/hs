@@ -25,10 +25,7 @@ jobs:
 
     - name: Build binaries
       run: |
-        mkdir -p release
-        GOOS=linux GOARCH=amd64 go build -o release/hs.linux
-        GOOS=darwin GOARCH=amd64 go build -o release/hs.mac  
-        GOOS=darwin GOARCH=arm64 go build -o release/hs.m1mac
+        ./release.sh "${{ github.sha }}" "${{ github.ref_name }}"  # populates release/release.yml with given sha/tag and builds binaries to dist/
 
     - name: Create Release
       run: |
@@ -40,9 +37,9 @@ jobs:
 
         # Create release with tag annotation notes (will fail if tag is not annotated)
         if ! gh release create ${{ github.ref_name }} \
-             release/hs.linux \
-             release/hs.mac \
-             release/hs.m1mac \
+             dist/hs.linux \
+             dist/hs.mac \
+             dist/hs.m1mac \
              --title "${{ github.ref_name }}" \
              --notes-from-tag \
              $PRERELEASE_FLAG; then
