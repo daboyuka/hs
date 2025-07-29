@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/daboyuka/hs/release"
 	"github.com/spf13/cobra"
 
 	"github.com/daboyuka/hs/cmd/exprcmd"
@@ -43,5 +44,6 @@ func init() {
 		out := c.OutOrStdout()
 		_, _ = fmt.Fprintln(out, "")
 		_, _ = fmt.Fprintln(out, "Supported browser loaders:", strings.Join(cookie.AllSupportedBrowsers(), " "))
+		_, _ = fmt.Fprintln(out, release.ReleaseName())
 	})
 }
