@@ -37,9 +37,7 @@ jobs:
 
         # Create release with tag annotation notes (will fail if tag is not annotated)
         if ! gh release create ${{ github.ref_name }} \
-             dist/hs.linux \
-             dist/hs.mac \
-             dist/hs.m1mac \
+             dist/* \
              --title "${{ github.ref_name }}" \
              --notes-from-tag \
              $PRERELEASE_FLAG; then
