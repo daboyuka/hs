@@ -44,6 +44,6 @@ func init() {
 		out := c.OutOrStdout()
 		_, _ = fmt.Fprintln(out, "")
 		_, _ = fmt.Fprintln(out, "Supported browser loaders:", strings.Join(cookie.AllSupportedBrowsers(), " "))
-		_, _ = fmt.Fprintln(out, RootCmd.Name()+" "+release.Release.String())
+		_, _ = fmt.Fprintln(out, release.Release.String())
 	})
 }
