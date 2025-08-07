@@ -24,5 +24,5 @@ func (h *HttpBuildCommand) Run(ctx context.Context, in record.Record, binds *bin
 	if err != nil {
 		return nil, nil, err
 	}
-	return &record.SingletonStream{Rec: requestToRecord(req)}, binds, err
+	return record.SingletonStream(requestToRecord(req)), binds, err
 }

@@ -11,45 +11,38 @@ import (
 )
 
 // attachProgressLogger begins rendering a terminal-based progress bar to w if enable == true. Refresh occurs every
-// interval. This function returns immediately, and continues until ctx is cancelled. waitForShutdown blocks until the
+// interval. This function returns immediately and continues until ctx is cancelled. waitForShutdown blocks until the
 // progress logger exits (shortly after ctx is cancelled).
 //
 // Progress is determined by outCounter (caller should increment it as records are processed); progress bar max is
 // indefinite until stream 'in' hits EOF, when it becomes total records streamed.
-//
-// Rendering only occurs if  to render is based on mode ("true", "false", "auto") and isOutTTY (if auto, render only if !isOutTTY)
 func attachProgressLogger(ctx context.Context, in record.Stream, enable bool, maxBuffer int, interval time.Duration, w io.Writer) (newIn record.Stream, outCounter *atomic.Uint64, waitForShutdown func()) {
 	if !enable {
 		return in, nil, func() {}
 	}
 
 	outCounter = &atomic.Uint64{}
-	counter := &record.CountingStream{Stream: in}
+	in, counter := record.CountStream(in)
 	outBuf := record.ChannelStream{Ch: make(chan record.RecordAndError, maxBuffer)}
 	go func() {
 		doneCh := ctx.Done()
-		for {
-			r, err := counter.Next()
-			if err == io.EOF {
-				close(outBuf.Ch)
-				return
-			}
-
+		for r, err := range in {
 			select {
 			case outBuf.Ch <- record.RecordAndError{Record: r, Err: err}:
 			case <-doneCh:
 				return
 			}
 		}
+		close(outBuf.Ch)
 	}()
 
 	doneCh := make(chan struct{})
 	go runProgressLogger(ctx, doneCh, counter, outCounter, interval, w)
 
-	return outBuf, outCounter, func() { <-doneCh }
+	return outBuf.All(), outCounter, func() { <-doneCh }
 }
 
-func runProgressLogger(ctx context.Context, doneCh chan<- struct{}, in *record.CountingStream, out *atomic.Uint64, interval time.Duration, w io.Writer) {
+func runProgressLogger(ctx context.Context, doneCh chan<- struct{}, cnt *record.Counter, out *atomic.Uint64, interval time.Duration, w io.Writer) {
 	defer close(doneCh)
 	abortCh := ctx.Done()
 
@@ -71,7 +64,7 @@ func runProgressLogger(ctx context.Context, doneCh chan<- struct{}, in *record.C
 	for {
 		select {
 		case <-t.C:
-			inCnt, inDone := in.Count()
+			inCnt, inDone := cnt.Count()
 			outCnt := out.Load()
 
 			if !foundMax && inDone {

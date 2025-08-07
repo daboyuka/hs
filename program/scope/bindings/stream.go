@@ -1,30 +1,28 @@
 package bindings
 
 import (
+	"iter"
+
 	"github.com/daboyuka/hs/program/record"
 )
 
-type BoundStream interface {
-	// Next is as record.Stream.Next, except it adds a Bindings alongside each record (may be shared by many records).
-	Next() (record.Record, *Bindings, error)
+type BoundRecord struct {
+	Record record.Record
+	Binds  *Bindings
 }
 
-type withBinds struct {
-	stream record.Stream
-	binds  *Bindings
-}
+type BoundStream = iter.Seq2[BoundRecord, error]
 
 func NewBoundStream(stream record.Stream, binds *Bindings) BoundStream {
-	return &withBinds{stream: stream, binds: binds}
+	return func(yield func(BoundRecord, error) bool) {
+		for rec, err := range stream {
+			if !yield(BoundRecord{Record: rec, Binds: binds}, err) {
+				break
+			}
+		}
+	}
 }
 
-func (w *withBinds) Next() (record.Record, *Bindings, error) {
-	rec, err := w.stream.Next()
-	return rec, w.binds, err
+func ErrorStream(err error) BoundStream {
+	return func(yield func(BoundRecord, error) bool) { yield(BoundRecord{}, err) }
 }
-
-type errStream struct{ err error }
-
-func ErrorStream(err error) BoundStream { return &errStream{err: err} }
-
-func (e *errStream) Next() (record.Record, *Bindings, error) { return nil, nil, e.err }

@@ -194,7 +194,7 @@ func (h *httpRunner) run(ctx context.Context, req RequestAndBody) (out record.St
 
 	if h.dryrun.Load() {
 		outRec := requestResponseToRecord(outReq, ResponseAndBody{HTTPError: dryrunErr}, nil)
-		return &record.SingletonStream{Rec: outRec}, nil
+		return record.SingletonStream(outRec), nil
 	}
 
 	var resp ResponseAndBody
@@ -242,7 +242,7 @@ func (h *httpRunner) run(ctx context.Context, req RequestAndBody) (out record.St
 	}
 
 	outRec := requestResponseToRecord(outReq, resp, retries)
-	return &record.SingletonStream{Rec: outRec}, nil
+	return record.SingletonStream(outRec), nil
 }
 
 // SetDryRun causes subsequent calls to run to immediately respond with status code 000 and human-readable error message.

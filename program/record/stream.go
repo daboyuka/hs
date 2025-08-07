@@ -6,71 +6,64 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"io"
-	"sync"
 )
 
-type RawStream struct {
-	r io.Reader
-}
-
-func NewRawStream(r io.Reader) *RawStream {
-	return &RawStream{r: r}
-}
-
-func (r *RawStream) Next() (Record, error) {
-	if b, err := io.ReadAll(r.r); err != nil {
-		return nil, err
-	} else {
-		return string(b), nil
-	}
-}
-
-type LineStream struct {
-	r bufio.Reader
-}
-
-func NewLineStream(r io.Reader) *LineStream {
-	return &LineStream{r: *bufio.NewReaderSize(r, 1<<10)}
-}
-
-func (l *LineStream) Next() (out Record, err error) {
-	var buf bytes.Buffer
-	for {
-		data, more, err := l.r.ReadLine()
-		if err != nil {
-			return nil, err // handles io.EOF too
-		} else if len(data) == 0 && !more {
-			continue // ignore empty lines
-		}
-
-		if buf.Len() == 0 {
-			if more {
-				buf = *bytes.NewBuffer(data)
-			} else if len(data) > 0 { // only return non-empty lines
-				return string(data), nil
-			}
+func NewRawStream(r io.Reader) Stream {
+	return func(yield func(Record, error) bool) {
+		if b, err := io.ReadAll(r); err != nil {
+			yield(nil, err)
 		} else {
-			_, _ = buf.Write(data)
-			if !more {
-				out = string(buf.Bytes())
-				buf.Reset()
-				return out, nil
+			yield(string(b), nil)
+		}
+	}
+}
+
+func NewLineStream(r io.Reader) Stream {
+	br := bufio.NewReaderSize(r, 1<<10)
+	return func(yield func(Record, error) bool) {
+		var buf bytes.Buffer
+		for {
+			data, more, err := br.ReadLine()
+			if err != nil {
+				if err != io.EOF {
+					yield(nil, err)
+				}
+				return
+			} else if len(data) == 0 && !more {
+				continue // ignore empty lines
+			}
+
+			if buf.Len() == 0 {
+				if more {
+					buf = *bytes.NewBuffer(data)
+				} else if len(data) > 0 { // only return non-empty lines
+					if !yield(string(data), nil) {
+						return
+					}
+				}
+			} else {
+				_, _ = buf.Write(data)
+				if !more {
+					if !yield(string(buf.Bytes()), nil) {
+						return
+					}
+					buf.Reset()
+				}
 			}
 		}
 	}
 }
 
-type JSONStream struct {
-	d json.Decoder
-}
-
-func NewJSONStream(r io.Reader) *JSONStream {
-	return &JSONStream{d: *json.NewDecoder(r)}
-}
-
-func (j *JSONStream) Next() (out Record, err error) {
-	err = j.d.Decode(&out)
-	return out, err
+func NewJSONStream(r io.Reader) Stream {
+	d := json.NewDecoder(r)
+	return func(yield func(Record, error) bool) {
+		var out Record
+		for {
+			if err := d.Decode(&out); err == io.EOF || !yield(out, err) {
+				return
+			}
+		}
+	}
 }
 
 type CsvStream struct {
@@ -84,11 +77,11 @@ type CsvStream struct {
 // comma is the separator (should be ',' for true CSV).
 // If raw, no CSV header is expected, and each line becomes a simple Array from field values; otherwise, the first line
 // is interpreted as a header defining field names, and each line becomes an Object using those field names.
-func NewCsvReader(r io.Reader, comma rune, raw bool) *CsvStream {
+func NewCsvReader(r io.Reader, comma rune, raw bool) Stream {
 	out := &CsvStream{r: *csv.NewReader(r), raw: raw}
 	out.r.Comma = comma
 	out.r.ReuseRecord = true // lets csv.Reader recycle Read's return slice
-	return out
+	return out.iter
 }
 
 func (c *CsvStream) loadHeader() error {
@@ -104,40 +97,36 @@ func (c *CsvStream) nextVals() ([]string, error) {
 		}
 	}
 
-	return c.r.Read() // c.concurrent -> !c.r.ReuseRecord -> fresh memory, making the return safe for concurrent in that case
+	return c.r.Read()
 }
 
-func (c *CsvStream) Next() (Record, error) {
-	vals, err := c.nextVals()
-	if err != nil {
-		return nil, err // handles io.EOF too
-	}
-
-	if c.raw {
-		out := make(Array, len(vals))
-		for i, v := range vals {
-			out[i] = v
+func (c *CsvStream) iter(yield func(Record, error) bool) {
+	for {
+		vals, err := c.nextVals()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			yield(nil, err)
+			return
 		}
-		return out, nil
-	} else {
-		out := make(Object, len(vals))
-		for i, v := range vals {
-			out[c.fields[i]] = v
+
+		var out Record
+		if c.raw {
+			outArr := make(Array, len(vals))
+			for i, v := range vals {
+				outArr[i] = v
+			}
+			out = outArr
+		} else {
+			outObj := make(Object, len(vals))
+			for i, v := range vals {
+				outObj[c.fields[i]] = v
+			}
+			out = outObj
 		}
-		return out, nil
+
+		if !yield(out, nil) {
+			return
+		}
 	}
-}
-
-// SyncStream wraps another Stream to make it safe for concurrent access by multiple goroutines.
-type SyncStream struct {
-	mtx sync.Mutex
-	s   Stream
-}
-
-func NewSyncStream(s Stream) Stream { return &SyncStream{s: s} }
-
-func (ss *SyncStream) Next() (Record, error) {
-	ss.mtx.Lock()
-	defer ss.mtx.Unlock()
-	return ss.Next()
 }

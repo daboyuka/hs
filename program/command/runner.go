@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io"
 	"sync"
 	"sync/atomic"
 
@@ -11,13 +10,7 @@ import (
 )
 
 func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, input record.Stream, output record.Sink, n int, counter *atomic.Uint64) (finalErr error) {
-	if n <= 0 {
-		n = 1
-	}
-
-	if n > 1 {
-		input = record.NewSyncStream(input) // make input threadsafe
-	}
+	n = max(n, 1)
 
 	wg := sync.WaitGroup{}
 	defer wg.Wait() // don't return until everything's shut down
@@ -25,21 +18,34 @@ func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, inp
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	errCh := make(chan error, n)
+	recCh := make(chan record.Record, n)
+	errCh := make(chan error, n+1) // +1 for input goroutine
+
+	// Feed recCh from input (or delivery error to errCh)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(recCh)
+		for rec, err := range input {
+			if err != nil {
+				errCh <- err
+				return
+			}
+			select {
+			case recCh <- rec:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// Run n goroutines, running cmd on inputs from recCh
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			for {
-				in, err := input.Next()
-				if err == io.EOF {
-					return
-				} else if err != nil {
-					errCh <- err
-					return
-				}
-
+			for in := range recCh {
 				out, _, err := cmd.Run(ctx, in, binds)
 				if err != nil {
 					errCh <- err
@@ -49,14 +55,11 @@ func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, inp
 					counter.Add(1)
 				}
 
-				for {
-					rec, err := out.Next()
-					if err == io.EOF {
-						break
-					} else if err != nil {
-						errCh <- err
-						return
-					} else if err := output.Sink(rec); err != nil {
+				for rec, err := range out {
+					if err == nil {
+						err = output.Sink(rec)
+					}
+					if err != nil {
 						errCh <- err
 						return
 					}
@@ -65,6 +68,7 @@ func RunParallel(ctx context.Context, cmd Command, binds *bindings.Bindings, inp
 		}()
 	}
 
+	// Await all worker goroutines, then close errCh to unblock loop below
 	go func() {
 		wg.Wait()
 		close(errCh)

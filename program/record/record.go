@@ -1,7 +1,7 @@
 package record
 
 import (
-	"io"
+	"iter"
 	"sync/atomic"
 )
 
@@ -18,68 +18,47 @@ type (
 	Object = map[string]any
 )
 
-type Stream interface {
-	// Next returns the next Record in the stream, or io.EOF if end-of-stream, or other error if one occurred.
-	// Next never returns both a Record and a non-nil error (as nil is indistinguishable from a real null Record).
-	// Once Next returns a non-nil error, every subsequent call returns the same error.
-	// Next is *not* safe for concurrent use by multiple goroutines.
-	Next() (Record, error)
-}
+type OldStream interface{ Next() (Record, error) }
+
+type Stream = iter.Seq2[Record, error]
 
 // CollectStream buffers a Stream of Record into an Array.
 func CollectStream(s Stream) (arr Array, err error) {
-	for {
-		switch r, err := s.Next(); err {
-		case nil:
-			arr = append(arr, r)
-		case io.EOF:
-			return arr, nil
-		default:
-			return arr, err
+	for r, err := range s {
+		if err != nil {
+			return nil, err
+		}
+		arr = append(arr, r)
+	}
+	return arr, nil
+}
+
+func SingletonStream(rec Record) Stream {
+	return func(yield func(Record, error) bool) { yield(rec, nil) }
+}
+
+func CountStream(s Stream) (Stream, *Counter) {
+	cnt := &Counter{stream: s}
+	return cnt.seq, cnt
+}
+
+type Counter struct {
+	stream Stream
+	cnt    atomic.Int64
+}
+
+func (c *Counter) seq(yield func(Record, error) bool) {
+	for r, err := range c.stream {
+		c.cnt.Add(1)
+		if !yield(r, err) {
+			break
 		}
 	}
+	c.cnt.Store(-c.cnt.Load() - 1) // -n-1 the count to indicate completion
 }
 
-type SliceStream []Record
-
-func (ss *SliceStream) Next() (out Record, err error) {
-	recs := *ss
-	if len(recs) == 0 {
-		return nil, io.EOF
-	}
-	out, *ss = recs[0], recs[1:]
-	return out, nil
-}
-
-type SingletonStream struct {
-	Rec  Record
-	done bool
-}
-
-func (t *SingletonStream) Next() (Record, error) {
-	if t.done {
-		return nil, io.EOF
-	}
-	t.done = true
-	return t.Rec, nil
-}
-
-type CountingStream struct {
-	Stream
-	count atomic.Int64
-}
-
-func (c *CountingStream) Next() (Record, error) {
-	r, err := c.Stream.Next()
-	if err != nil {
-		c.count.Store(-c.count.Load() - 1) // -n-1 the count to indicate completion
-		return nil, err
-	}
-	c.count.Add(1)
-	return r, nil
-}
-func (c *CountingStream) Count() (n int, done bool) {
-	if n = int(c.count.Load()); n < 0 {
+func (c *Counter) Count() (n int, done bool) {
+	if n = int(c.cnt.Load()); n < 0 {
 		n, done = -(n + 1), true
 	}
 	return n, done
@@ -94,12 +73,11 @@ type ChannelStream struct {
 	Ch chan RecordAndError
 }
 
-func (c ChannelStream) Next() (Record, error) {
-	r, ok := <-c.Ch
-	if !ok {
-		return nil, io.EOF
-	} else if r.Err != nil {
-		return nil, r.Err
+func (c ChannelStream) All() Stream { return c.iter }
+func (c ChannelStream) iter(yield func(Record, error) bool) {
+	for re := range c.Ch {
+		if !yield(re.Record, re.Err) {
+			break
+		}
 	}
-	return r.Record, nil
 }

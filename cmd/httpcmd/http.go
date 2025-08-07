@@ -155,7 +155,7 @@ func openInput(r io.Reader, infmt string) (parsed record.Stream, err error) {
 
 	switch infmt {
 	case "null":
-		return &record.SingletonStream{Rec: nil}, nil
+		return record.SingletonStream(nil), nil
 	case "raw":
 		return record.NewRawStream(r), nil
 	case "lines":
@@ -163,13 +163,13 @@ func openInput(r io.Reader, infmt string) (parsed record.Stream, err error) {
 	case "json":
 		return record.NewJSONStream(r), nil
 	case "rawcsv":
-		return record.NewCsvReader(r, ',', true, false), nil
+		return record.NewCsvReader(r, ',', true), nil
 	case "csv":
-		return record.NewCsvReader(r, ',', false, false), nil
+		return record.NewCsvReader(r, ',', false), nil
 	case "rawtsv":
-		return record.NewCsvReader(r, '\t', true, false), nil
+		return record.NewCsvReader(r, '\t', true), nil
 	case "tsv":
-		return record.NewCsvReader(r, '\t', false, false), nil
+		return record.NewCsvReader(r, '\t', false), nil
 	}
 	return nil, fmt.Errorf("unsupported infmt '%s'", infmt)
 }
