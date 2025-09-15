@@ -56,11 +56,10 @@ rflags (run flags):
   -b cookiefile   : add a cookiejar file, curl/Netscape format (may be repeated)
   -F, --fails file: write failure responses (conn. error / non-2xx status) to file, or to
                     stdout if "-" (default "-")
-  -o, --outfmt    : response output format: one of reqresp (request + response), resp (response only),
-                    body (payload only), bodycode (status + payload), or auto (as reqresp if stdout is
-                    redirected to a regular file, body otherwise) (default auto)
+  -o, --outfmt    : response output format: one of body (payload only; default), bodycode (status + payload), 
+                    reqresp (request + response), or resp (response only)
   -P pll          : run at most pll requests in parallel (default 1)
-  -p mode         : show progress bar; mode one of "auto" (default = if stdout not redirected to regualr file), "true", "false"
+  -p mode         : show progress bar; mode one of "auto" (if stdout redirected to file; default), "true", "false"
   -r retries      : retry failed requests (conn. error / non-2xx status) up to retries times
 ```
 
