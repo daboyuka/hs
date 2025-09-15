@@ -227,10 +227,13 @@ func newOutputFormatter(outfmt string, defaultToBodyOnly bool) outputFormatter {
 	case "bodycode":
 		return func(rr record.Record) (record.Record, error) {
 			respObj := rr.(record.Object)["response"].(record.Object)
+			var statusStr, bodyStr string
 			if errVal, ok := respObj["error"]; ok {
-				return "000\n" + record.CoerceString(errVal), nil
+				statusStr, bodyStr = "000", record.CoerceString(errVal)
+			} else {
+				statusStr, bodyStr = record.CoerceString(respObj["status"]), record.CoerceString(respObj["body"])
 			}
-			return record.CoerceString(respObj["status"]) + "\n" + record.CoerceString(respObj["body"]), nil
+			return statusStr + " " + bodyStr, nil
 		}
 	}
 	panic(fmt.Errorf("unsupported outfmt '%s'", outfmt))
