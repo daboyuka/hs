@@ -188,13 +188,13 @@ func autoInputFormat(r io.Reader) (infmt string, r2 io.Reader, err error) {
 	}
 }
 
-func isNonFileOutput(w io.Writer) bool {
+func isFileOutput(w io.Writer) bool {
 	if f, ok := w.(*os.File); !ok {
-		return true
+		return false
 	} else if stat, err := f.Stat(); err != nil {
-		return true // fallback to non-file
+		return false // fallback to non-file
 	} else {
-		return stat.Mode()&os.ModeType != 0
+		return stat.Mode()&os.ModeType == 0
 	}
 }
 
