@@ -200,15 +200,7 @@ func isNonFileOutput(w io.Writer) bool {
 
 type outputFormatter func(record.Record) (record.Record, error)
 
-func newOutputFormatter(outfmt string, defaultToBodyOnly bool) outputFormatter {
-	if outfmt == "auto" {
-		if defaultToBodyOnly {
-			outfmt = "body"
-		} else {
-			outfmt = "reqresp"
-		}
-	}
-
+func newOutputFormatter(outfmt string) outputFormatter {
 	switch outfmt {
 	case "reqresp", "full":
 		return func(rr record.Record) (record.Record, error) { return rr, nil }
@@ -239,11 +231,17 @@ func newOutputFormatter(outfmt string, defaultToBodyOnly bool) outputFormatter {
 	panic(fmt.Errorf("unsupported outfmt '%s'", outfmt))
 }
 
-func openOutput(out, err io.StringWriter, outfmt string, defaultToBodyOnly bool) *responseSplitFileSink {
+func openOutput(out, err io.StringWriter, outfmt string) *responseSplitFileSink {
+	warnIfErr := false
+	if outfmt == "auto" {
+		outfmt, warnIfErr = "body", true
+	}
 	return &responseSplitFileSink{
-		OutFmt: newOutputFormatter(outfmt, defaultToBodyOnly),
+		OutFmt: newOutputFormatter(outfmt),
 		Out:    out,
 		Err:    err,
+
+		warnIfErr: warnIfErr,
 	}
 }
 
@@ -252,12 +250,17 @@ type responseSplitFileSink struct {
 	OutFmt outputFormatter
 	Out    io.StringWriter
 	Err    io.StringWriter
+
+	HadErr    bool // set if any row went to Err
+	warnIfErr bool
 }
 
 func (w *responseSplitFileSink) Sink(rec record.Record) (err error) {
 	var writeTo io.StringWriter
+	hadErr := false
 	if isFailResponse(rec) {
 		writeTo = w.Err
+		hadErr = true
 	} else {
 		writeTo = w.Out
 		rec, err = w.OutFmt(rec) // apply output formatting only for success records
@@ -272,5 +275,12 @@ func (w *responseSplitFileSink) Sink(rec record.Record) (err error) {
 	defer w.mtx.Unlock()
 	_, err = writeTo.WriteString(recStr)
 	_, err = writeTo.WriteString("\n")
+	w.HadErr = w.HadErr || hadErr
 	return err
+}
+
+func (w *responseSplitFileSink) Finish() {
+	if w.warnIfErr && w.HadErr {
+		_, _ = fmt.Fprintf(os.Stderr, "warning: got some non-200 status codes, but only response bodies were printed in default output mode; if status codes are needed, run with -o with more verbose output format\n")
+	}
 }

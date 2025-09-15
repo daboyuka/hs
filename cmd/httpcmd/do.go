@@ -65,7 +65,7 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 
 	isNonFileOut := isNonFileOutput(os.Stdout)
 
-	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt, isNonFileOut)
+	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt)
 	if fn := runFlagVals.failfile; fn != "" && fn != "-" {
 		f, err := os.Create(fn)
 		if err != nil {
@@ -78,6 +78,7 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		}()
 		sink.Err = f
 	}
+	defer sink.Finish()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
