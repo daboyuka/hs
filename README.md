@@ -57,7 +57,7 @@ rflags (run flags):
   -F, --fails file: write failure responses (conn. error / non-2xx status) to file, or to
                     stdout if "-" (default "-")
   -o, --outfmt    : response output format: one of reqresp (request + response), resp (response only),
-                    body (payload only), bodycode (payload + status), or auto (as reqresp if stdout is
+                    body (payload only), bodycode (status + payload), or auto (as reqresp if stdout is
                     redirected to a regular file, body otherwise) (default auto)
   -P pll          : run at most pll requests in parallel (default 1)
   -p mode         : show progress bar; mode one of "auto" (default = if stdout not redirected to regualr file), "true", "false"
