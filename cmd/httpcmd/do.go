@@ -63,7 +63,7 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	}
 
-	isNonFileOut := isNonFileOutput(os.Stdout)
+	isStdoutNormalFile := isFileOutput(os.Stdout)
 
 	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt)
 	if fn := runFlagVals.failfile; fn != "" && fn != "-" {
@@ -82,7 +82,7 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && !isNonFileOut)
+	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && isStdoutNormalFile)
 	input, outCounter, awaitProgressLogger := attachProgressLogger(ctx, input, enableProgress, maxInputBufferRecords, time.Second/4, os.Stderr)
 	defer awaitProgressLogger()
 
