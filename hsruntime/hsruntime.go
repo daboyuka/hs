@@ -31,6 +31,20 @@ type ConfigInitFn func(cfg string) (string, error)
 // HostAliasFn applies host aliasing rules, returning a new hostname (or "" if no aliasing is applied).
 type HostAliasFn func(hostname string) (newHostname string)
 
+func (f HostAliasFn) Apply(u *url.URL) error {
+	if u.User == nil || u.User.String() != "" {
+		return nil // not an host alias pattern (starting with bare @)
+	}
+
+	newHost := f(u.Host)
+	if newHost == "" {
+		return fmt.Errorf("unknown host alias @%s", u.Host)
+	}
+
+	u.User, u.Host = nil, newHost
+	return nil
+}
+
 func noHostAliasing(hostname string) string { return "" }
 
 type SimpleHostAliases map[string]string

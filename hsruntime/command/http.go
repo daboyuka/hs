@@ -129,14 +129,8 @@ func (h *httpBuilder) buildRequest(in record.Record, binds *scope.Bindings) (req
 		}
 	}
 
-	// If hostname looks like '@www.google.com', drop the @ and apply host aliasing
-	if req.URL.User != nil && req.URL.User.String() == "" {
-		req.URL.User = nil
-		if newHost := h.hostAliasing(req.URL.Host); newHost == "" {
-			return RequestAndBody{}, fmt.Errorf("unknown host alias @%s", req.URL.Host)
-		} else {
-			req.URL.Host = newHost
-		}
+	if err := h.hostAliasing.Apply(req.URL); err != nil {
+		return RequestAndBody{}, err
 	}
 
 	if h.body != nil {
