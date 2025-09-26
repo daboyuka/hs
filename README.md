@@ -157,10 +157,10 @@ COOKIES            : extra cookies (if "name=value") or cookiejar files (otherwi
 BROWSER_LOADERS    : browser(s) to autoload cookies from, or "all" for all supported
                      see section below (string or array-of-strings)
 COOKIE_HOST_ALIASES: a mapping XXX->YYY that causes requests for hostname XXX to also match cookies for hostname YYY
-                     (in addition to matching XXX as normal).
-                     If YYY has a scheme (e.g. http:// or https://), cookies are matched using that scheme rather than
-                     that of the original request.
-                     Example: XXX -> https://YYY will allow requests to http://XXX to use Secure-only cookies from YYY.  
+                     (in addition to matching XXX as normal). If YYY has a scheme (e.g. http:// or https://), cookies are
+                     matched using that scheme rather than that of the original request.
+                     The host after host aliasing is applied is used as XXX, and host aliasing is applied to new host YYY.
+                     Example: XXX: https://YYY lets requests to http://XXX use Secure-only (HTTPS) cookies from YYY.
 ```
 
 Example:

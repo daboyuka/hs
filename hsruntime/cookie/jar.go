@@ -1,26 +1,14 @@
 package cookie
 
 import (
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 
+	"github.com/daboyuka/hs/hsruntime/hostalias"
 	"golang.org/x/net/publicsuffix"
 )
-
-//
-//type ReadOnlyJar interface{ Cookies(*url.URL) []*http.Cookie }
-//
-//func ReadOnly(jar http.CookieJar) http.CookieJar {
-//	return struct {
-//		ReadOnlyJar
-//		noopSetCookies
-//	}{ReadOnlyJar: jar}
-//}
-//
-//type noopSetCookies struct{}
-//
-//func (noopSetCookies) SetCookies(*url.URL, []*http.Cookie) {}
 
 type JarAdapterFunc func(u *url.URL, next http.CookieJar) []*http.Cookie
 
@@ -90,22 +78,43 @@ func (j jarConcat) Cookies(u *url.URL) []*http.Cookie {
 	return append(j.CookieJar.Cookies(u), j.append.Cookies(u)...)
 }
 
-type HostAliasJarAdapter map[string]*url.URL
+type hostAliasJarAdapter struct {
+	mapping    map[string]*url.URL
+	afterAlias *hostalias.HostAlias // apply to result hostname (pointer so it captures latest host aliasing even if wrapped more later)
+}
 
-func (haja HostAliasJarAdapter) doAlias(u *url.URL) *url.URL {
-	h2, ok := haja[u.Hostname()]
+func HostAliasJarAdapter(mapping map[string]*url.URL, afterAlias *hostalias.HostAlias) JarAdapterFunc {
+	adapt := hostAliasJarAdapter{mapping: mapping, afterAlias: afterAlias}
+	return adapt.Adapt
+}
+
+func (haja hostAliasJarAdapter) doAlias(u *url.URL) *url.URL {
+	h2, ok := haja.mapping[u.Hostname()]
 	if !ok {
 		return nil
 	}
+
 	u2 := *u
 	u2.Host = h2.Host
 	if h2.Scheme != "" {
 		u2.Scheme = h2.Scheme
 	}
+	if h2.User != nil {
+		u2.User = h2.User // copy user/pass so we can support host aliases
+	}
+
+	// Apply standard host aliasing to the mapped host
+	if haja.afterAlias != nil {
+		if err := haja.afterAlias.Apply(&u2); err != nil {
+			log.Printf("warning: bad cookie host alias in config: %s", err)
+			return nil
+		}
+	}
+
 	return &u2
 }
 
-func (haja HostAliasJarAdapter) Adapt(u *url.URL, next http.CookieJar) []*http.Cookie {
+func (haja hostAliasJarAdapter) Adapt(u *url.URL, next http.CookieJar) []*http.Cookie {
 	cookies := next.Cookies(u)
 	if u2 := haja.doAlias(u); u2 != nil {
 		cookies = append(cookies, next.Cookies(u2)...)

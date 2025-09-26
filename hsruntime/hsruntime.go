@@ -59,7 +59,7 @@ func NewDefaultContext(opts Options) (ctx *Context, err error) {
 	ctx.Client.Jar = &DeferredLoadCookieJar{ // don't actually load cookies until needed
 		LoadFn: func() (http.CookieJar, error) { return cookie.Load(opts.CookieSpecs, ctx.Globals) },
 	}
-	if ctx.Client.Jar, err = defaultCookieHostAliasing(ctx.Client.Jar, ctx.Globals); err != nil {
+	if ctx.Client.Jar, err = defaultCookieHostAliasing(ctx.Client.Jar, ctx); err != nil {
 		return nil, err
 	}
 
@@ -93,8 +93,8 @@ func (d *DeferredLoadCookieJar) load() {
 	}
 }
 
-func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings) (http.CookieJar, error) {
-	aliasesIntf, _ := globals.Lookup("COOKIE_HOST_ALIASES")
+func defaultCookieHostAliasing(base http.CookieJar, ctx *Context) (http.CookieJar, error) {
+	aliasesIntf, _ := ctx.Globals.Lookup("COOKIE_HOST_ALIASES")
 
 	switch aliases := aliasesIntf.(type) {
 	default:
@@ -102,20 +102,42 @@ func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings
 	case nil:
 		return base, nil
 	case map[string]interface{}:
-		aliasJar := make(cookie.HostAliasJarAdapter)
+		aliasMap := make(map[string]*url.URL, len(aliases))
 		for k, v := range aliases {
-			host, ok := v.(string)
-			if !ok {
+			if targetStr, ok := v.(string); !ok {
 				return nil, fmt.Errorf("expected string values for COOKIE_HOST_ALIASES mappings, got %T", v)
+			} else if targetUrl, err := parseTargetCookieHostAlias(targetStr); err != nil {
+				return nil, fmt.Errorf("bad target hostname %s for cookie host alias: %w", targetStr, err)
+			} else {
+				aliasMap[k] = targetUrl
 			}
-			scheme := ""
-			if s, h, ok := strings.Cut(host, "://"); ok {
-				scheme, host = s, h
-			}
-			aliasJar[k] = &url.URL{Scheme: scheme, Host: host}
 		}
-		return cookie.Adapt(base, aliasJar.Adapt), nil
+		return cookie.Adapt(base, cookie.HostAliasJarAdapter(aliasMap, &ctx.HostAliasing)), nil
 	}
+}
+
+func parseTargetCookieHostAlias(src string) (*url.URL, error) {
+	// Allow src to be parsed as a bare hostname if // is missing
+	if !strings.Contains(src, "//") {
+		src = "//" + src
+	}
+
+	hostUrl, err := url.Parse(src)
+	switch { // host is required, scheme is optional, and user may only be missing or blank; no other URL structure is permitted
+	case err != nil:
+		return nil, err
+	case hostUrl.User != nil && hostUrl.User.String() != "":
+		return nil, fmt.Errorf("must not contain username/password")
+	case hostUrl.RawPath != "":
+		return nil, fmt.Errorf("must not contain path")
+	case hostUrl.OmitHost:
+		return nil, fmt.Errorf("must contain hostname")
+	case hostUrl.RawQuery != "" || hostUrl.ForceQuery:
+		return nil, fmt.Errorf("must not contain query parameters")
+	case hostUrl.RawFragment != "":
+		return nil, fmt.Errorf("must not contain fragment")
+	}
+	return hostUrl, nil
 }
 
 func defaultHostAliasing(base hostalias.HostAlias, globals scope.ScopedBindings) (hostalias.HostAlias, error) {
