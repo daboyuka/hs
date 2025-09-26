@@ -15,6 +15,7 @@ import (
 
 	"github.com/daboyuka/hs/hsruntime"
 	"github.com/daboyuka/hs/hsruntime/datafmt"
+	"github.com/daboyuka/hs/hsruntime/hostalias"
 	"github.com/daboyuka/hs/program/expr"
 	"github.com/daboyuka/hs/program/expr/parser"
 	"github.com/daboyuka/hs/program/record"
@@ -41,7 +42,7 @@ type httpBuilder struct {
 	headers []expr.Expr
 
 	defaultHost  string
-	hostAliasing hsruntime.HostAliasFn
+	hostAliasing hostalias.HostAlias
 
 	autoContentTypeOnce sync.Once
 	autoContentType     string

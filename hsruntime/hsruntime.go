@@ -12,6 +12,7 @@ import (
 
 	"github.com/daboyuka/hs/hsruntime/config"
 	"github.com/daboyuka/hs/hsruntime/cookie"
+	"github.com/daboyuka/hs/hsruntime/hostalias"
 	"github.com/daboyuka/hs/program/scope"
 )
 
@@ -21,54 +22,17 @@ type Context struct {
 
 	ConfigInit   ConfigInitFn
 	DefaultHost  string
-	HostAliasing HostAliasFn
+	HostAliasing hostalias.HostAlias
 	Client       *http.Client
 }
 
 // ConfigInitFn is a function that augments the default configuration
 type ConfigInitFn func(cfg string) (string, error)
 
-// HostAliasFn applies host aliasing rules, returning a new hostname (or "" if no aliasing is applied).
-type HostAliasFn func(hostname string) (newHostname string)
-
-func (f HostAliasFn) Apply(u *url.URL) error {
-	if u.User == nil || u.User.String() != "" {
-		return nil // not an host alias pattern (starting with bare @)
-	}
-
-	newHost := f(u.Host)
-	if newHost == "" {
-		return fmt.Errorf("unknown host alias @%s", u.Host)
-	}
-
-	u.User, u.Host = nil, newHost
-	return nil
-}
-
-func noHostAliasing(hostname string) string { return "" }
-
-type SimpleHostAliases map[string]string
-
-func (sha SimpleHostAliases) GetAlias(hostname string) string {
-	if h2, ok := sha[hostname]; ok {
-		return h2
-	}
-	return ""
-}
-
-func ComposeHostAliasing(base, next HostAliasFn) HostAliasFn {
-	return func(hostname string) string {
-		if hostname2 := base(hostname); hostname2 != "" {
-			return hostname2
-		}
-		return next(hostname)
-	}
-}
-
 func NewContext() *Context {
 	return &Context{
 		ConfigInit:   config.DefaultConfiguration,
-		HostAliasing: noHostAliasing,
+		HostAliasing: hostalias.None,
 		Client:       &http.Client{},
 	}
 }
@@ -88,7 +52,7 @@ func NewDefaultContext(opts Options) (ctx *Context, err error) {
 	if ctx.DefaultHost, err = getHost(ctx.Globals); err != nil {
 		return nil, err
 	}
-	if ctx.HostAliasing, err = defaultHostAliasing(noHostAliasing, ctx.Globals); err != nil {
+	if ctx.HostAliasing, err = defaultHostAliasing(hostalias.None, ctx.Globals); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +118,7 @@ func defaultCookieHostAliasing(base http.CookieJar, globals scope.ScopedBindings
 	}
 }
 
-func defaultHostAliasing(base HostAliasFn, globals scope.ScopedBindings) (HostAliasFn, error) {
+func defaultHostAliasing(base hostalias.HostAlias, globals scope.ScopedBindings) (hostalias.HostAlias, error) {
 	aliasesIntf, _ := globals.Lookup("HOST_ALIASES")
 
 	switch aliases := aliasesIntf.(type) {
@@ -163,15 +127,15 @@ func defaultHostAliasing(base HostAliasFn, globals scope.ScopedBindings) (HostAl
 	case nil:
 		return base, nil
 	case map[string]interface{}:
-		simpleAliases := make(SimpleHostAliases, len(aliases))
+		aliasesStr := make(map[string]string, len(aliases))
 		for k, v := range aliases {
 			vStr, ok := v.(string)
 			if !ok {
 				return nil, fmt.Errorf("expected string values for HOST_ALIASES mappings, got %T", v)
 			}
-			simpleAliases[k] = vStr
+			aliasesStr[k] = vStr
 		}
-		return ComposeHostAliasing(base, simpleAliases.GetAlias), nil
+		return hostalias.Compose(base, hostalias.Simple(aliasesStr)), nil
 	}
 }
 
