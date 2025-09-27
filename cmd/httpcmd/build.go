@@ -35,7 +35,7 @@ func cmdBuild(cmd *cobra.Command, args []string) (finalErr error) {
 	} else if err := plugin.Apply(hctx); err != nil {
 		return err
 	} else if err := config.WarnMissingBaseConfiguration(); err != nil {
-		os.Stderr.WriteString("Warning: " + err.Error() + "\n")
+		os.Stderr.WriteString("warning: " + err.Error() + "\n")
 	}
 
 	for _, spec := range buildFlagVals.loadSpecs {
