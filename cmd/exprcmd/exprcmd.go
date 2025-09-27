@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmdctx "github.com/daboyuka/hs/cmd/context"
 	"github.com/daboyuka/hs/hsruntime"
-	"github.com/daboyuka/hs/hsruntime/plugin"
 	"github.com/daboyuka/hs/program/expr/parser"
 	"github.com/daboyuka/hs/program/record"
 )
@@ -27,10 +27,8 @@ func init() {
 }
 
 func cmdExpr(cmd *cobra.Command, args []string) (err error) {
-	hctx, err := hsruntime.NewDefaultContext(hsruntime.Options{})
+	hctx, err := cmdctx.Init(hsruntime.Options{}, true)
 	if err != nil {
-		return err
-	} else if err := plugin.Apply(hctx); err != nil {
 		return err
 	}
 

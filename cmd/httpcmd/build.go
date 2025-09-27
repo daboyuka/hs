@@ -8,10 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmdctx "github.com/daboyuka/hs/cmd/context"
 	"github.com/daboyuka/hs/hsruntime"
 	hscommand "github.com/daboyuka/hs/hsruntime/command"
-	"github.com/daboyuka/hs/hsruntime/config"
-	"github.com/daboyuka/hs/hsruntime/plugin"
 	"github.com/daboyuka/hs/program/command"
 	"github.com/daboyuka/hs/program/record"
 )
@@ -29,13 +28,9 @@ func cmdBuild(cmd *cobra.Command, args []string) (finalErr error) {
 	}
 
 	ctx := context.Background()
-	hctx, err := hsruntime.NewDefaultContext(hsruntime.Options{})
+	hctx, err := cmdctx.Init(hsruntime.Options{}, true)
 	if err != nil {
 		return err
-	} else if err := plugin.Apply(hctx); err != nil {
-		return err
-	} else if err := config.WarnMissingBaseConfiguration(); err != nil {
-		os.Stderr.WriteString("warning: " + err.Error() + "\n")
 	}
 
 	for _, spec := range buildFlagVals.loadSpecs {
