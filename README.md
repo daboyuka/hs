@@ -25,7 +25,7 @@ COMMANDS:
 hs <method> [cflags] [bflags] [rflags] <url> [<body>]
   build and run HTTP requests, print responses on stdout
   
-hs build [cflags] [bflags] [-X <method>] <url> [<body>]
+hs build <method> [cflags] [bflags] <url> [<body>]
   build HTTP requests, print requests on stdout (for use with "run" later)
 
 hs run [cflags] [rflags]
@@ -35,7 +35,7 @@ hs [<command>] -h
   print full help [for <command>]
 
 ARGS:
-method: the HTTP method (default GET)
+method: the HTTP method
 url   : the URL: may omit scheme (default "https:") (templated)
 body  : the request payload, for valid methods (templated, default empty)
 ```
