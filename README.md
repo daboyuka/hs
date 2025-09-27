@@ -36,7 +36,7 @@ hs [<command>] -h
 
 ARGS:
 method: the HTTP method (default GET)
-url   : the URL: may omit scheme (default "https:") or hostname (default $HOST) (templated)
+url   : the URL: may omit scheme (default "https:") (templated)
 body  : the request payload, for valid methods (templated, default empty)
 ```
 
@@ -151,7 +151,6 @@ For environment variables: values are always interpreted as strings.
 ### Special Globals
 These global variables have additional, special behavior when bound:
 ```
-HOST               : default hostname (when omitted from url) used in build command (string)
 HOST_ALIASES       : a mapping XXX->YYY that causes request building to replace hostname '@XXX' (note the @) with YYY
 COOKIES            : extra cookies (if "name=value") or cookiejar files (otherwise) to use (string or array-of-strings)  
 BROWSER_LOADERS    : browser(s) to autoload cookies from, or "all" for all supported
@@ -165,7 +164,6 @@ COOKIE_HOST_ALIASES: a mapping XXX->YYY that causes requests for hostname XXX to
 
 Example:
 ```
-host: example.com
 host_aliases:
   coolhost: example.com  # //@coolhost/... becomes //example.com/... 
 cookies:

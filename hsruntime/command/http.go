@@ -41,7 +41,6 @@ type httpBuilder struct {
 	body    expr.Expr
 	headers []expr.Expr
 
-	defaultHost  string
 	hostAliasing hostalias.HostAlias
 
 	autoContentTypeOnce sync.Once
@@ -84,7 +83,6 @@ func (h *HttpCommand) Run(ctx context.Context, in record.Record, binds *scope.Bi
 
 func newHttpBuilder(method, url, body string, headers []string, scp *scope.Scope, hctx *hsruntime.Context) (builder httpBuilder, finalErr error) {
 	builder.method = method
-	builder.defaultHost = hctx.DefaultHost
 	builder.hostAliasing = hctx.HostAliasing
 
 	parse := func(src string, out *expr.Expr) bool {
@@ -123,10 +121,7 @@ func (h *httpBuilder) buildRequest(in record.Record, binds *scope.Bindings) (req
 	if req.URL.Scheme == "" {
 		req.URL.Scheme = "https"
 		if req.URL.Host == "" {
-			req.URL.Host = h.defaultHost
-		}
-		if req.URL.Host == "" {
-			return RequestAndBody{}, fmt.Errorf("request build is missing host, and no global HOST variable is set")
+			return RequestAndBody{}, fmt.Errorf("request is missing host")
 		}
 	}
 

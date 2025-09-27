@@ -18,7 +18,6 @@ type Context struct {
 	Funcs   *scope.FuncTable
 
 	ConfigInit   ConfigInitFn
-	DefaultHost  string
 	HostAliasing hostalias.HostAlias
 	Client       *http.Client
 }
@@ -46,9 +45,6 @@ func NewDefaultContext(opts Options) (ctx *Context, err error) {
 		return nil, err
 	}
 
-	if ctx.DefaultHost, err = getHost(ctx.Globals); err != nil {
-		return nil, err
-	}
 	if ctx.HostAliasing, err = defaultHostAliasing(hostalias.None, ctx.Globals); err != nil {
 		return nil, err
 	}
@@ -128,17 +124,5 @@ func defaultHostAliasing(base hostalias.HostAlias, globals scope.ScopedBindings)
 			aliasesStr[k] = vStr
 		}
 		return hostalias.Compose(base, hostalias.Simple(aliasesStr)), nil
-	}
-}
-
-func getHost(globals scope.ScopedBindings) (string, error) {
-	hostIntf, _ := globals.Lookup("HOST")
-	switch host := hostIntf.(type) {
-	default:
-		return "", fmt.Errorf("expected string for HOST, got %T", hostIntf)
-	case nil:
-		return "", nil
-	case string:
-		return host, nil
 	}
 }
