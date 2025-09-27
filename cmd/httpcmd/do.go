@@ -7,10 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmdctx "github.com/daboyuka/hs/cmd/context"
 	"github.com/daboyuka/hs/hsruntime"
 	hscommand "github.com/daboyuka/hs/hsruntime/command"
-	"github.com/daboyuka/hs/hsruntime/config"
-	"github.com/daboyuka/hs/hsruntime/plugin"
 	"github.com/daboyuka/hs/program/command"
 )
 
@@ -23,13 +22,9 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		bodySrc = args[1]
 	}
 
-	hctx, err := hsruntime.NewDefaultContext(hsruntime.Options{CookieSpecs: runFlagVals.cookies})
+	hctx, err := cmdctx.Init(hsruntime.Options{CookieSpecs: runFlagVals.cookies}, true)
 	if err != nil {
 		return err
-	} else if err := plugin.Apply(hctx); err != nil {
-		return err
-	} else if err := config.WarnMissingBaseConfiguration(); err != nil {
-		os.Stderr.WriteString("Warning: " + err.Error() + "\n")
 	}
 
 	for _, spec := range buildFlagVals.loadSpecs {
