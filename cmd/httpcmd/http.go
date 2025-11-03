@@ -256,17 +256,14 @@ type responseSplitFileSink struct {
 }
 
 func (w *responseSplitFileSink) Sink(rec record.Record) (err error) {
-	var writeTo io.StringWriter
-	hadErr := false
+	writeTo, hadErr := w.Out, false
 	if isFailResponse(rec) {
-		writeTo = w.Err
-		hadErr = true
-	} else {
-		writeTo = w.Out
-		rec, err = w.OutFmt(rec) // apply output formatting only for success records
-		if err != nil {
-			return err
-		}
+		writeTo, hadErr = w.Err, true
+	}
+
+	rec, err = w.OutFmt(rec)
+	if err != nil {
+		return err
 	}
 
 	recStr := record.CoerceString(rec)
