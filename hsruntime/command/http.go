@@ -49,6 +49,7 @@ type httpBuilder struct {
 }
 
 type httpRunner struct {
+	ctx    context.Context
 	client *http.Client
 	retry  RetryFunc
 
@@ -60,9 +61,10 @@ type HttpCommand struct {
 	httpRunner
 }
 
-func NewHttpCommand(method, url, body string, headers []string, scope *scope.Scope, hctx *hsruntime.Context, retry RetryFunc) (cmd *HttpCommand, nextScope *scope.Scope, err error) {
+func NewHttpCommand(ctx context.Context, method, url, body string, headers []string, scope *scope.Scope, hctx *hsruntime.Context, retry RetryFunc) (cmd *HttpCommand, nextScope *scope.Scope, err error) {
 	cmd = &HttpCommand{
 		httpRunner: httpRunner{
+			ctx:    ctx,
 			client: hctx.Client,
 			retry:  retry,
 		},
@@ -72,14 +74,18 @@ func NewHttpCommand(method, url, body string, headers []string, scope *scope.Sco
 	return cmd, scope, err
 }
 
-func (h *HttpCommand) Run(ctx context.Context, in record.Record, binds *bindings.Bindings) (out record.Stream, outBinds *bindings.Bindings, err error) {
-	req, err := h.buildRequest(in, binds)
+func (h *HttpCommand) Operate(in bindings.BoundRecord, sink bindings.BoundSink) error {
+	req, err := h.buildRequest(in.Rec, in.Binds)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	out, err = h.httpRunner.run(ctx, req)
-	return out, binds, err
+	outRec, err := h.httpRunner.run(req)
+	if err != nil {
+		return err
+	}
+
+	return sink(bindings.BoundRecord{Binds: in.Binds, Rec: outRec})
 }
 
 func newHttpBuilder(method, url, body string, headers []string, scp *scope.Scope, hctx *hsruntime.Context) (builder httpBuilder, finalErr error) {
@@ -176,15 +182,14 @@ func (h *httpBuilder) autodetectContentTypeIfNeeded(req *RequestAndBody) {
 
 var dryrunErr = errors.New("request not sent")
 
-func (h *httpRunner) run(ctx context.Context, req RequestAndBody) (out record.Stream, err error) {
-	req.Request = req.Request.WithContext(ctx)
+func (h *httpRunner) run(req RequestAndBody) (out record.Object, err error) {
+	req.Request = req.Request.WithContext(h.ctx)
 
 	req.Header.Set("Accept-Encoding", "gzip")
-	outReq := RequestAndBody{Request: req.Clone(ctx), BodyContent: req.BodyContent}
+	outReq := RequestAndBody{Request: req.Clone(h.ctx), BodyContent: req.BodyContent}
 
 	if h.dryrun.Load() {
-		outRec := requestResponseToRecord(outReq, ResponseAndBody{HTTPError: dryrunErr}, nil)
-		return &record.SingletonStream{Rec: outRec}, nil
+		return requestResponseToRecord(outReq, ResponseAndBody{HTTPError: dryrunErr}, nil), nil
 	}
 
 	var resp ResponseAndBody
@@ -231,8 +236,7 @@ func (h *httpRunner) run(ctx context.Context, req RequestAndBody) (out record.St
 		}
 	}
 
-	outRec := requestResponseToRecord(outReq, resp, retries)
-	return &record.SingletonStream{Rec: outRec}, nil
+	return requestResponseToRecord(outReq, resp, retries), nil
 }
 
 // SetDryRun causes subsequent calls to run to immediately respond with status code 000 and human-readable error message.

@@ -2,29 +2,24 @@ package bindings
 
 import (
 	"github.com/daboyuka/hs/program/record"
+	"github.com/daboyuka/hs/program/stream"
 )
 
-type BoundStream interface {
-	// Next is as record.Stream.Next, except it adds a Bindings alongside each record (may be shared by many records).
-	Next() (record.Record, *Bindings, error)
+type BoundRecord struct {
+	Binds *Bindings
+	Rec   record.Record
 }
 
-type withBinds struct {
-	stream record.Stream
-	binds  *Bindings
+type BoundStream = stream.Stream[BoundRecord]
+type BoundSink = stream.Sink[BoundRecord]
+
+func BindStream(stream record.Stream, binds *Bindings) BoundStream {
+	return func(yield func(BoundRecord) error) error {
+		yield2 := func(r record.Record) error { return yield(BoundRecord{Binds: binds, Rec: r}) }
+		return stream(yield2)
+	}
 }
 
-func NewBoundStream(stream record.Stream, binds *Bindings) BoundStream {
-	return &withBinds{stream: stream, binds: binds}
+func BindSink(sink record.Sink) BoundSink {
+	return func(rec BoundRecord) error { return sink(rec.Rec) }
 }
-
-func (w *withBinds) Next() (record.Record, *Bindings, error) {
-	rec, err := w.stream.Next()
-	return rec, w.binds, err
-}
-
-type errStream struct{ err error }
-
-func ErrorStream(err error) BoundStream { return &errStream{err: err} }
-
-func (e *errStream) Next() (record.Record, *Bindings, error) { return nil, nil, e.err }

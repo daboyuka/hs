@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -25,14 +24,18 @@ func NewHttpRunCommand(scope *scope.Scope, hctx *hsruntime.Context, retry RetryF
 	}, scope, nil
 }
 
-func (h *HttpRunCommand) Run(ctx context.Context, in record.Record, binds *bindings.Bindings) (out record.Stream, outBinds *bindings.Bindings, err error) {
-	req, err := h.extractRequest(in)
+func (h *HttpRunCommand) Operate(in bindings.BoundRecord, sink bindings.BoundSink) error {
+	req, err := h.extractRequest(in.Rec)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	out, err = h.run(ctx, req)
-	return out, binds, err
+	out, err := h.run(req)
+	if err != nil {
+		return err
+	}
+
+	return sink(bindings.BoundRecord{Rec: out, Binds: in.Binds})
 }
 
 func (h *HttpRunCommand) extractRequest(in record.Record) (req RequestAndBody, err error) {

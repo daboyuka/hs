@@ -1,10 +1,7 @@
 package command
 
 import (
-	"context"
-
 	"github.com/daboyuka/hs/hsruntime"
-	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"
 	"github.com/daboyuka/hs/program/scope/bindings"
 )
@@ -19,10 +16,10 @@ func NewHttpBuildCommand(method, url, body string, headers []string, scope *scop
 	return cmd, scope, err
 }
 
-func (h *HttpBuildCommand) Run(ctx context.Context, in record.Record, binds *bindings.Bindings) (out record.Stream, outBinds *bindings.Bindings, err error) {
-	req, err := h.buildRequest(in, binds)
+func (h *HttpBuildCommand) Operate(in bindings.BoundRecord, sink bindings.BoundSink) error {
+	outRec, err := h.buildRequest(in.Rec, in.Binds)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	return &record.SingletonStream{Rec: requestToRecord(req)}, binds, err
+	return sink(bindings.BoundRecord{Binds: in.Binds, Rec: outRec})
 }

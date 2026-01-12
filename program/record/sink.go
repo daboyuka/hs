@@ -5,22 +5,16 @@ import (
 	"sync"
 )
 
-// A Sink consumes Records.
-type Sink interface {
-	// Sink accepts a Record, with implementation-dependent effect. It is safe for concurrent use by multiple goroutines.
-	Sink(rec Record) error
+func StringWriterSink(sw io.StringWriter) Sink {
+	return (&stringWriterSink{Writer: sw}).Sink
 }
 
-type DiscardSink struct{}
-
-func (DiscardSink) Sink(Record) error { return nil }
-
-type StringWriterSink struct {
+type stringWriterSink struct {
 	mtx    sync.Mutex
 	Writer io.StringWriter
 }
 
-func (s *StringWriterSink) Sink(r Record) error {
+func (s *stringWriterSink) Sink(r Record) error {
 	str := CoerceString(r)
 	s.mtx.Lock()
 	defer s.mtx.Unlock()

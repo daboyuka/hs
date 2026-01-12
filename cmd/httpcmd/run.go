@@ -5,12 +5,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/daboyuka/hs/program/scope/bindings"
+	"github.com/daboyuka/hs/program/stream"
 	"github.com/spf13/cobra"
 
 	cmdctx "github.com/daboyuka/hs/cmd/context"
 	"github.com/daboyuka/hs/hsruntime"
 	hscommand "github.com/daboyuka/hs/hsruntime/command"
-	"github.com/daboyuka/hs/program/command"
 )
 
 const maxInputBufferRecords = 1 << 16
@@ -64,5 +65,12 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 	attachInterruptForHttpRunner(ctx, hcmd.SetDryRun, cancel)
 
 	defer cancel()
-	return command.RunParallel(ctx, hcmd, binds, input, sink, runFlagVals.parallel, outCounter)
+
+	s := bindings.BindStream(input, binds)
+	if runFlagVals.parallel > 1 {
+		s = stream.LimitedParallel(s, runFlagVals.parallel)
+	}
+
+	_ = outCounter // TODO
+	return stream.Run(s, bindings.BindSink(sink.Sink))
 }
