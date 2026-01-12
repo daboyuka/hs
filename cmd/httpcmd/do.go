@@ -5,12 +5,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/daboyuka/hs/program/record"
+	"github.com/daboyuka/hs/program/scope"
+	"github.com/daboyuka/hs/program/scope/bindings"
+	"github.com/daboyuka/hs/program/stream"
 	"github.com/spf13/cobra"
 
 	cmdctx "github.com/daboyuka/hs/cmd/context"
 	"github.com/daboyuka/hs/hsruntime"
 	hscommand "github.com/daboyuka/hs/hsruntime/command"
-	"github.com/daboyuka/hs/program/command"
 )
 
 func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
@@ -43,22 +46,42 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		}
 	}
 
-	hcmdRaw, scp, err := hscommand.NewHttpCommand(method, urlSrc, bodySrc, buildFlagVals.headers, scp, hctx, retry)
-	if err != nil {
-		return err
-	}
-
-	var hcmd command.Command = hcmdRaw
-	if runFlagVals.outfmt == "full" {
-		hcmd = addInputFieldCommand{Cmd: hcmd, Field: "input"}
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	input, err := openInput(os.Stdin, commonFlagVals.infmt)
 	if err != nil {
 		return err
 	}
 
-	isStdoutNormalFile := isFileOutput(os.Stdout)
+	var inputIdent scope.Ident
+	var ops []stream.Operator[bindings.BoundRecord]
+
+	if runFlagVals.outfmt == "full" {
+		scp2, ids := scope.NewScope(scp, "_input")
+		inputIdent = ids[0]
+		m := func(br bindings.BoundRecord) (bindings.BoundRecord, error) {
+			br.Binds = bindings.New(br.Binds, map[scope.Ident]record.Record{inputIdent: br.Rec})
+			return br, nil
+		}
+		scp, ops = scp2, append(ops, stream.Mapper[bindings.BoundRecord](m).Operate)
+	}
+
+	hcmd, scp, err := hscommand.NewHttpCommand(ctx, method, urlSrc, bodySrc, buildFlagVals.headers, scp, hctx, retry)
+	if err != nil {
+		return err
+	}
+	attachInterruptForHttpRunner(ctx, hcmd.SetDryRun, cancel)
+	ops = append(ops, hcmd.Operate)
+
+	if inputIdent.Valid() {
+		m := func(br bindings.BoundRecord) (bindings.BoundRecord, error) {
+			inputV, _ := br.Binds.Get(inputIdent)
+			br.Rec.(record.Object)["input"] = inputV
+			return br, nil
+		}
+		ops = append(ops, stream.Mapper[bindings.BoundRecord](m).Operate)
+	}
 
 	sink := openOutput(os.Stdout, os.Stdout, runFlagVals.outfmt)
 	if fn := runFlagVals.failfile; fn != "" && fn != "-" {
@@ -75,14 +98,21 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 	}
 	defer sink.Finish()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
+	isStdoutNormalFile := isFileOutput(os.Stdout)
 	enableProgress := runFlagVals.progress == "true" || (runFlagVals.progress == "auto" && isStdoutNormalFile)
+
 	input, outCounter, awaitProgressLogger := attachProgressLogger(ctx, input, enableProgress, maxInputBufferRecords, time.Second/4, os.Stderr)
 	defer awaitProgressLogger()
 
-	attachInterruptForHttpRunner(ctx, hcmdRaw.SetDryRun, cancel)
+	_ = outCounter // TODO figure this out
 
-	defer cancel()
-	return command.RunParallel(ctx, hcmd, binds, input, sink, runFlagVals.parallel, outCounter)
+	// Build pipeline
+	s := bindings.BindStream(input, binds)
+	if runFlagVals.parallel > 1 {
+		s = stream.LimitedParallel(s, runFlagVals.parallel)
+	}
+	for _, op := range ops {
+		s = stream.Apply(s, op)
+	}
+	return stream.Run(s, bindings.BindSink(sink.Sink))
 }

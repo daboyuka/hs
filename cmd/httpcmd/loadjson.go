@@ -2,7 +2,6 @@ package httpcmd
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -30,19 +29,18 @@ func loadJSONTable(spec string, sb bindings.Scoped, fns *scope.FuncTable) (bindi
 	}
 	defer f.Close()
 
-	j := record.NewJSONStream(f)
 	table := make(record.Object)
-
-	for {
-		if v, err := j.Next(); err == io.EOF {
-			break
-		} else if err != nil {
-			return sb, fmt.Errorf("could not read file '%s': %s", filename, err)
-		} else if k, err := keyexpr.Eval(v, sb.Binds); err != nil {
-			return sb, fmt.Errorf("error evaluating key expression: %s", err)
-		} else {
-			table[record.CoerceString(k)] = v
+	fs := record.NewJSONStream(f)
+	err = fs(func(v record.Record) error {
+		k, err := keyexpr.Eval(v, sb.Binds)
+		if err != nil {
+			return fmt.Errorf("error evaluating key expression: %s", err)
 		}
+		table[record.CoerceString(k)] = v
+		return nil
+	})
+	if err != nil {
+		return sb, fmt.Errorf("could not read file '%s': %s", filename, err)
 	}
 
 	s2, ids := scope.NewScope(sb.Scope, varname)

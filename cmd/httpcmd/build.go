@@ -1,17 +1,17 @@
 package httpcmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"slices"
 
+	"github.com/daboyuka/hs/program/scope/bindings"
+	"github.com/daboyuka/hs/program/stream"
 	"github.com/spf13/cobra"
 
 	cmdctx "github.com/daboyuka/hs/cmd/context"
 	"github.com/daboyuka/hs/hsruntime"
 	hscommand "github.com/daboyuka/hs/hsruntime/command"
-	"github.com/daboyuka/hs/program/command"
 	"github.com/daboyuka/hs/program/record"
 )
 
@@ -27,7 +27,6 @@ func cmdBuild(cmd *cobra.Command, args []string) (finalErr error) {
 		bodySrc = args[2]
 	}
 
-	ctx := context.Background()
 	hctx, err := cmdctx.Init(hsruntime.Options{}, true)
 	if err != nil {
 		return err
@@ -42,16 +41,20 @@ func cmdBuild(cmd *cobra.Command, args []string) (finalErr error) {
 
 	scp, binds := hctx.Globals.Scope, hctx.Globals.Binds
 
+	input, err := openInput(os.Stdin, commonFlagVals.infmt)
+	if err != nil {
+		return err
+	}
+
 	hcmd, scp, err := hscommand.NewHttpBuildCommand(method, urlSrc, bodySrc, buildFlagVals.headers, scp, hctx)
 	if err != nil {
 		return err
 	}
 
-	input, err := openInput(os.Stdin, commonFlagVals.infmt)
-	if err != nil {
-		return err
-	}
-	sink := &record.StringWriterSink{Writer: os.Stdout}
+	sink := record.StringWriterSink(os.Stdout)
 
-	return command.RunParallel(ctx, hcmd, binds, input, sink, 1, nil)
+	// Build pipeline
+	s := bindings.BindStream(input, binds)
+	s = stream.Apply(s, hcmd.Operate)
+	return stream.Run(s, bindings.BindSink(sink))
 }
