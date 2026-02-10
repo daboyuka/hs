@@ -1,6 +1,7 @@
 package cookie
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -20,7 +21,7 @@ const (
 
 func AllSupportedBrowsers() (browsers []string) {
 	browsersSet := make(map[string]bool)
-	for _, store := range kooky.FindAllCookieStores() {
+	for _, store := range kooky.FindAllCookieStores(context.Background()) {
 		browsersSet[store.Browser()] = true
 	}
 	for browser := range browsersSet {
@@ -46,13 +47,12 @@ func loadBrowserCookies(globals scope.ScopedBindings) (cookies []*http.Cookie, e
 		filters = append(filters, kooky.NameHasPrefix(prefix))
 	}
 
-	for _, store := range kooky.FindAllCookieStores() {
+	for _, store := range kooky.FindAllCookieStores(context.Background()) {
 		if !allBrowsers && !browsersSet[store.Browser()] {
 			continue
 		}
-		kcookies, err := store.ReadCookies(filters...)
-		if err == nil {
-			for _, kcookie := range kcookies {
+		for kcookie, err := range store.TraverseCookies(filters...) {
+			if err == nil {
 				cookies = append(cookies, &kcookie.Cookie)
 			}
 		}
