@@ -60,3 +60,7 @@ func (c *Counter) Count() (n int, done bool) {
 	}
 	return n, done
 }
+
+func Error[T any](err error) Stream[T] {
+	return func(func(T) error) error { return err }
+}
