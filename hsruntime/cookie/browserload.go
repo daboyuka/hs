@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"slices"
 	"strings"
 
 	"github.com/browserutils/kooky"
@@ -42,23 +43,26 @@ func loadBrowserCookies(globals scope.ScopedBindings) (cookies []*http.Cookie, e
 		return nil, nil // if no browsers given, don't load browser cookies at all
 	}
 
-	var filters []kooky.Filter
-	for _, prefix := range prefixes {
-		filters = append(filters, kooky.NameHasPrefix(prefix))
-	}
-
 	for _, store := range kooky.FindAllCookieStores(context.Background()) {
 		if !allBrowsers && !browsersSet[store.Browser()] {
 			continue
 		}
-		for kcookie, err := range store.TraverseCookies(filters...) {
-			if err == nil {
-				cookies = append(cookies, &kcookie.Cookie)
+		for kcookie, err := range store.TraverseCookies() {
+			if err != nil || kcookie == nil {
+				continue
+			} else if c := kcookie.Cookie; !cookieMatchesPrefixes(&c, prefixes) {
+				continue
+			} else {
+				cookies = append(cookies, &c)
 			}
 		}
 	}
 
 	return cookies, nil
+}
+
+func cookieMatchesPrefixes(c *http.Cookie, prefixes []string) bool {
+	return len(prefixes) == 0 || slices.ContainsFunc(prefixes, func(prefix string) bool { return strings.HasPrefix(c.Name, prefix) })
 }
 
 func getBrowserLoaderConfig(globals scope.ScopedBindings) (browsersSet map[string]bool, allBrowsers bool, prefixes []string, err error) {
