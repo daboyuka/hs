@@ -58,6 +58,12 @@ func loadBrowserCookies(globals scope.ScopedBindings) (cookies []*http.Cookie, e
 		}
 	}
 
+	fmt.Println("OLD")
+	for _, cookie := range cookies {
+		fmt.Println(*cookie)
+	}
+	fmt.Println("DONE OLD")
+
 	return cookies, nil
 }
 
