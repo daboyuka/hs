@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/browserutils/kooky"
-	_ "github.com/browserutils/kooky/browser/all" // enable all browsers
+	"github.com/daboyuka/kooky"
+	_ "github.com/daboyuka/kooky/browser/all" // enable all browsers
 
 	"github.com/daboyuka/hs/program/record"
 	"github.com/daboyuka/hs/program/scope"

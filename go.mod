@@ -4,7 +4,7 @@ go 1.23.10
 
 require (
 	github.com/MercuryEngineering/CookieMonster v0.0.0-20180304172713-1584578b3403
-	github.com/browserutils/kooky v0.2.4
+	github.com/daboyuka/kooky v0.2.5
 	github.com/schollz/progressbar/v3 v3.17.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.6
