@@ -47,7 +47,7 @@ func cmdBuild(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	}
 
-	input, err := openInput(os.Stdin, commonFlagVals.infmt)
+	input, err := openInput(os.Stdin, commonFlagVals.infmt, false)
 	if err != nil {
 		return err
 	}

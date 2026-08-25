@@ -140,7 +140,7 @@ func isFailResponse(rec record.Record) bool {
 	return errVal != nil || int(status)/100 != 2
 }
 
-func openInput(r io.Reader, infmt string) (parsed record.Stream, err error) {
+func openInput(r io.Reader, infmt string, pll bool) (parsed record.Stream, err error) {
 	// Default: null if tty stdin, lines otherwise
 	if infmt == "" || infmt == "auto" {
 		if f, ok := r.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
@@ -163,13 +163,13 @@ func openInput(r io.Reader, infmt string) (parsed record.Stream, err error) {
 	case "json":
 		return record.NewJSONStream(r), nil
 	case "rawcsv":
-		return record.NewCsvReader(r, ',', true, false), nil
+		return record.NewCsvReader(r, ',', true, pll), nil
 	case "csv":
-		return record.NewCsvReader(r, ',', false, false), nil
+		return record.NewCsvReader(r, ',', false, pll), nil
 	case "rawtsv":
-		return record.NewCsvReader(r, '\t', true, false), nil
+		return record.NewCsvReader(r, '\t', true, pll), nil
 	case "tsv":
-		return record.NewCsvReader(r, '\t', false, false), nil
+		return record.NewCsvReader(r, '\t', false, pll), nil
 	}
 	return nil, fmt.Errorf("unsupported infmt '%s'", infmt)
 }

@@ -34,7 +34,7 @@ func cmdRun(cmd *cobra.Command, args []string) (finalErr error) {
 		return err
 	}
 
-	input, err := openInput(os.Stdin, commonFlagVals.infmt)
+	input, err := openInput(os.Stdin, commonFlagVals.infmt, runFlagVals.parallel > 1)
 	if err != nil {
 		return err
 	}

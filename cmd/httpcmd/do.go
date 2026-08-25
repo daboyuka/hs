@@ -53,7 +53,7 @@ func cmdDo(cmd *cobra.Command, args []string) (finalErr error) {
 		hcmd = addInputFieldCommand{Cmd: hcmd, Field: "input"}
 	}
 
-	input, err := openInput(os.Stdin, commonFlagVals.infmt)
+	input, err := openInput(os.Stdin, commonFlagVals.infmt, runFlagVals.parallel > 1)
 	if err != nil {
 		return err
 	}
