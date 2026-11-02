@@ -1,6 +1,6 @@
 module github.com/daboyuka/hs
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/MercuryEngineering/CookieMonster v0.0.0-20180304172713-1584578b3403
@@ -8,8 +8,8 @@ require (
 	github.com/schollz/progressbar/v3 v3.17.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.10
-	golang.org/x/net v0.50.0
-	golang.org/x/term v0.40.0
+	golang.org/x/net v0.62.0
+	golang.org/x/term v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -25,9 +25,9 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/zalando/go-keyring v0.2.7 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/ini.v1 v1.67.1 // indirect
 )
